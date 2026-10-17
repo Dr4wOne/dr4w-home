@@ -1,6 +1,6 @@
 // home.dr4w.io: the kit's showcase. Static, demo mode only: every device runs in the browser.
 
-import { LivingRoom, PowerMark } from '@dr4w-home/web/embed'
+import { ControllerDemo, LivingRoom, PowerMark } from '@dr4w-home/web/embed'
 import { type CSSProperties, useState } from 'react'
 import lampPhoto from './assets/lamp.webp'
 import remotePhoto from './assets/remote-dpad.webp'
@@ -8,6 +8,7 @@ import {
   architecture,
   claims,
   compatibility,
+  controller,
   cta,
   footer,
   links,
@@ -104,6 +105,25 @@ function Claims() {
           </a>
         </div>
       </div>
+    </section>
+  )
+}
+
+function Controller() {
+  return (
+    <section className="pad-section" aria-labelledby="pad-title" id="controller-demo">
+      <div className="pad-words">
+        <h2 id="pad-title" className="compat-title" data-reveal>
+          {controller.title}
+        </h2>
+        <p data-reveal style={delay(1)}>
+          {controller.sentence}
+        </p>
+        <p data-reveal style={delay(2)}>
+          {controller.after}
+        </p>
+      </div>
+      <ControllerDemo />
     </section>
   )
 }
@@ -399,6 +419,7 @@ export function Showcase() {
           </div>
         </section>
         <Claims />
+        <Controller />
         <div className="band" aria-hidden="true">
           {Array.from({ length: 12 }, (_, i) => (
             <PowerMark key={i} className="band-mark" stroke={12} />

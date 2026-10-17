@@ -4,6 +4,11 @@
 
 ## In progress
 - Waiting for the owner's approval of Part A before Part B starts.
+- Phone controller (branch `build/sw-web`): client transport (`gamepad` session, profiles), player,
+  builder, presets and the showcase's virtual screen are built; tested in jsdom and headless Chrome
+  (two-finger touch, slide-press); showcase Lighthouse on a local preview 100 / 100 / 100 / 100. Open:
+  merge with the hub's WebSocket and profiles routes, and checks on a real iPhone (multi-touch feel,
+  tilt sign and permission, click sound unlock, Home Screen full screen). Guide: `docs/controller.md`.
 
 ## Done
 - Packages: `device-sdk` (capabilities incl. `mode`, schemas), `adapter-android-tv` (protocol, supervised

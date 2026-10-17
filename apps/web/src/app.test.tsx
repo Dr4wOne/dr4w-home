@@ -76,7 +76,11 @@ async function tvOn(answer?: (n: number) => CommandResult | undefined) {
     <App
       start={{
         mode: 'demo',
-        source: Object.assign(source, { adapter: demo.adapter, devices: demo.devices }),
+        source: Object.assign(source, {
+          adapter: demo.adapter,
+          devices: demo.devices,
+          pad: demo.pad,
+        }),
       }}
     />,
   )
@@ -113,4 +117,12 @@ it('runs "movie night" from the command bar', async () => {
   fireEvent.submit(bar.closest('form') as HTMLFormElement)
   expect(await screen.findByText('Movie night is set.')).toBeTruthy()
   await waitFor(() => expect(screen.getByText(/On · Netflix · Volume 18/)).toBeTruthy())
+})
+
+it('offers the controller in a console device view', async () => {
+  await tvOn()
+  fireEvent.click(screen.getByRole('button', { name: /Open Switch 2\./ }))
+  expect(await screen.findByRole('heading', { name: 'Controller' })).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'Play with Pro Controller' })).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'Mario Kart' })).toBeTruthy()
 })

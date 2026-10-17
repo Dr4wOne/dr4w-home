@@ -4,6 +4,7 @@
 import type { PadButton } from './gamepad.ts'
 
 export * from './gamepad.ts'
+export * from './presets.ts'
 
 /** Where a value came from: read back from the device, or set by us and not yet confirmed. */
 export type Source = 'reported' | 'assumed'

@@ -44,6 +44,14 @@ export const claims = [
   },
 ]
 
+export const controller = {
+  title: 'A controller in your pocket',
+  sentence:
+    'Pick a layout, turn your phone on its side and play. On a real hub every press goes to the console through Bluetooth controller emulation; here a simulated console shows what it would receive.',
+  after:
+    'Build your own layout: drag, resize and rebind any control, by touch or by keyboard. Macros are for offline single-player only.',
+}
+
 export const steps = [
   {
     say: 'First, run the hub at home.',

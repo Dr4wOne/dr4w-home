@@ -1,8 +1,9 @@
 // A device's full control sheet. Loaded on demand, so the home screen ships less script.
 import { type Command, capability, type Device, type KeyName } from '@dr4w-home/device-sdk'
 import { useEffect, useState } from 'react'
+import { ControllerPanel } from './ControllerPanel.tsx'
 import { deviceIcon } from './icons.tsx'
-import { click, PowerButton, powerOf, stateText } from './parts.tsx'
+import { Chevron, Choice, click, PowerButton, powerOf, stateText } from './parts.tsx'
 import type { Home } from './useHome.ts'
 
 function Remote({ d, send, offline }: { d: Device; send: (c: Command) => void; offline: boolean }) {
@@ -153,19 +154,6 @@ function Remote({ d, send, offline }: { d: Device; send: (c: Command) => void; o
   )
 }
 
-const Chevron = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-    <path
-      d="M6 15l6-6 6 6"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-)
-
 function Slider({
   label,
   value,
@@ -298,39 +286,6 @@ function AssumedPower({
   )
 }
 
-/** A row of named options: inputs, fan speeds, modes. */
-function Choice({
-  label,
-  options,
-  current,
-  onPick,
-  disabled,
-}: {
-  label: string
-  options: { id: string; name: string }[]
-  current?: string
-  onPick: (id: string) => void
-  disabled: boolean
-}) {
-  return (
-    <fieldset className="choices">
-      <legend>{label}</legend>
-      {options.map((o) => (
-        <button
-          key={o.id}
-          type="button"
-          className="btn"
-          aria-pressed={o.id === current}
-          disabled={disabled}
-          onClick={() => onPick(o.id)}
-        >
-          {o.name}
-        </button>
-      ))}
-    </fieldset>
-  )
-}
-
 /** Controls generated from a device's capabilities, for every device without a custom widget. */
 function CapabilityControls({
   d,
@@ -388,7 +343,9 @@ export default function DeviceView({
   }
   useEffect(() => {
     document.getElementById('device-title')?.focus()
-    const esc = (e: KeyboardEvent) => e.key === 'Escape' && onBack()
+    // The controller's player and builder handle their own Escape.
+    const esc = (e: KeyboardEvent) =>
+      e.key === 'Escape' && !document.querySelector('.player, .builder') && onBack()
     addEventListener('keydown', esc)
     return () => removeEventListener('keydown', esc)
   }, [onBack])
@@ -423,6 +380,19 @@ export default function DeviceView({
         <Remote d={d} send={send} offline={offline} />
       ) : (
         <CapabilityControls d={d} send={send} disabled={offline} />
+      )}
+      {capability(d, 'gamepad') && (
+        <section aria-labelledby="controller-title">
+          <h2 id="controller-title" className="group-title">
+            {capability(d, 'gamepad')?.label ?? 'Controller'}
+          </h2>
+          <ControllerPanel
+            source={home.source}
+            deviceId={d.id}
+            sound={sound}
+            disabled={offline || home.down}
+          />
+        </section>
       )}
       <p className="works-with">{d.worksWith}</p>
     </main>

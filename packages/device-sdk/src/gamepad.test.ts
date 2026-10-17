@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { GAMEPAD_BUTTONS, mask, pressed } from './gamepad.ts'
+import { CONTROLLER_PRESETS } from './presets.ts'
 import { ControllerProfileSchema, GamepadFrameSchema } from './schema.ts'
 
 describe('gamepad frames', () => {
@@ -26,5 +27,15 @@ describe('gamepad frames', () => {
     }
     expect(ControllerProfileSchema.safeParse(p).success).toBe(true)
     expect(ControllerProfileSchema.safeParse({ ...p, owner: 'x' }).success).toBe(false)
+  })
+  it('ships presets that pass the profile schema', () => {
+    expect(CONTROLLER_PRESETS.map((p) => p.name)).toEqual([
+      'Pro Controller',
+      'Mario Kart',
+      'Party',
+      'One-handed (right)',
+    ])
+    for (const p of CONTROLLER_PRESETS) expect(ControllerProfileSchema.parse(p)).toEqual(p)
+    expect(CONTROLLER_PRESETS.find((p) => p.id === 'mario-kart')?.tilt?.stick).toBe('left')
   })
 })
