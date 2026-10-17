@@ -4,6 +4,9 @@ Your phone can be a controller for a console the hub knows (today: the Nintendo 
 Bluetooth controller emulation on the hub computer). You can try it without any hardware in the
 showcase or in demo mode, where a simulated console shows what it would receive.
 
+Playing a real Switch 2? Read [switch-2.md](switch-2.md) first: how to pair, why you pair again after
+the console sleeps, and what the emulated controller cannot do.
+
 ## Play
 1. Open the console in the app (tap its card), or scroll to "A controller in your pocket" on the
    showcase.

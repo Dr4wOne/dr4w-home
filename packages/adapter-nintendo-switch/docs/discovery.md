@@ -70,3 +70,14 @@ in later as a second output behind the same interface.
   sticks in four directions. Still connected at the end. NXBT's BlueZ override (`--noplugin=*`, a
   runtime file under `/run/systemd`) was removed afterwards and Bluetooth restarted normally.
   Not tested yet: reconnection after the console sleeps, latency, and long sessions.
+- **Through the hub and the sidecar service, 2026-10-17.** Paired through Change Grip/Order once the
+  unit allowed `CAP_NET_BIND_SERVICE` (the HID channels are L2CAP PSMs 17 and 19). The owner checked
+  every button and both sticks on Test Controller Buttons from the iPhone. Latency judge through the
+  real sidecar: 1000 of 1000 frames acked, hub receive to sidecar write p95 0.13 ms, client send to ack
+  p95 0.75 ms (the Bluetooth link and the phone's Wi-Fi are not in these numbers). Turning the phone's
+  Wi-Fi off released the held button on the console.
+- **No reconnect after sleep on the Switch 2.** After the console slept, nxbt's controller ended in
+  `crashed`. Reconnecting to the saved address was refused with `ConnectionResetError: [Errno 104]
+  Connection reset by peer` on three tries, also right after a service restart with the console
+  awake. Pairing again through Change Grip/Order works. Not investigated further (owner, 2026-10-17);
+  the wired bridge avoids Bluetooth reconnects altogether.

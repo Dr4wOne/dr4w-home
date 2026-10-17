@@ -6,9 +6,11 @@
 - Part B, Switch 2 (branch `build/switch2`): live controller WebSocket `/api/gamepad/:id` with a
   watchdog, demo and Bluetooth (nxbt sidecar) outputs, `adapter-nintendo-switch`, controller profiles
   API with built-in presets, latency judge (demo output: p95 about 1 ms send to ack); the phone's
-  player, builder and the showcase's virtual screen (guide: `docs/controller.md`). Open: install the
-  root sidecar and test on the console; checks on a real iPhone (multi-touch feel, tilt sign and
-  permission, click sound unlock, Home Screen full screen).
+  player, builder and the showcase's virtual screen (guide: `docs/controller.md`, Switch 2:
+  `docs/switch-2.md`). On the console (B4): every button and stick pass, hub-side p95 0.13 ms through
+  the real sidecar, release on a Wi-Fi drop pass, reconnect after sleep fails (pair again). Open:
+  checks on a real iPhone (multi-touch feel, tilt sign and permission, click sound unlock, Home Screen
+  full screen); G5.
 
 ## Done
 - Packages: `device-sdk` (capabilities incl. `mode`, schemas), `adapter-android-tv` (protocol, supervised

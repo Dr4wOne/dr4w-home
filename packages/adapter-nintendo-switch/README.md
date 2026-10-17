@@ -75,13 +75,16 @@ sudo systemctl start dr4w-home-nxbt   # on demand; `enable --now` to start it at
 journalctl -u dr4w-home-nxbt -f
 ```
 
-First pairing: on the console open **Controllers → Change Grip/Order** while the service runs. The
-sidecar then stores the Switch's address in `/var/lib/dr4w-home-nxbt/switch-address.json` (root only)
-and reconnects to it on later starts; reconnecting needs the console awake and not on that screen.
-When the console sleeps the connection drops. The sidecar then starts a fresh controller that tries
-the saved Switch first and otherwise stays discoverable (renewed every 170 s). On a Switch 2
-(system 23.0.1) the reconnect is refused (`Connection reset by peer`), so after the console wakes,
-open **Change Grip/Order** once to pair again.
+Pairing: on the console open **Controllers → Change Grip/Order** while the service runs. **On a
+Switch 2, do this again after every sleep or restart** (of the console or of the service): the console
+refuses the emulated controller's reconnect. Playing day to day, the limits and fixes:
+[docs/switch-2.md](../../docs/switch-2.md).
+
+How the sidecar recovers: after the first pairing it stores the Switch's address in
+`/var/lib/dr4w-home-nxbt/switch-address.json` (root only). When the connection drops, nxbt marks the
+controller crashed; 10 s later the sidecar starts a fresh one that tries the saved Switch first (a
+Switch 1 may accept it; the Switch 2 does not) and then waits, discoverable, to be paired. nxbt's
+discoverable window is 180 s, so the sidecar renews it every 170 s while nothing is paired.
 
 While the service runs, nxbt has started BlueZ with all its plugins off (`--noplugin=*`), so other
 Bluetooth keyboards, mice, game controllers and headphones on this machine stop working. Stopping the service (`sudo systemctl stop
