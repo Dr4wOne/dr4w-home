@@ -23,6 +23,38 @@ header `x-dr4w-client: 1` (a CSRF guard: a form on another site cannot set it). 
 | `POST /api/devices/:id/commands` | `{ command: Command, confirmed?: boolean }` | `CommandResult` |
 | `POST /api/scenes/:id/run` | | `{ ok, failedStep? }` (the hub runs the steps, so a scene finishes even if the phone locks) |
 | `GET /api/events` | | Server-sent events: `device` (a `Device` as JSON, whenever its state changes) and `ping` every 15 s |
+| `GET /api/gamepad/:id` | WebSocket upgrade | The live controller socket (below) |
+| `GET /api/controller-profiles` | | `ControllerProfile[]`: the built-in presets (`PRESETS` in the device SDK) first, then the saved ones |
+| `PUT /api/controller-profiles/:id` | `ControllerProfile` (its `id` must equal `:id`) | The saved profile. `409 { error: "read_only" }` for a preset id, `409 { error: "too_many" }` past 50 saved profiles |
+| `DELETE /api/controller-profiles/:id` | | `{ ok: true }`; `409 { error: "read_only" }` for a preset, `404` if there is no such profile |
+
+Saved profiles live in `controller-profiles.json` next to the hub config, mode 0600.
+
+## Live controller socket
+`GET /api/gamepad/:id` upgrades to a WebSocket for a device with a `gamepad` capability. It needs the
+session cookie like every `/api` route. Browsers cannot add headers to a WebSocket, so instead of
+`x-dr4w-client` the `Origin` header must be the hub's own origin (from `DR4W_HOME_URL`, or the address
+the hub prints), or a loopback origin (`localhost`, `127.0.0.1`, `[::1]`) that equals the request's
+`Host` (the dev server). Anything else gets `403` before the upgrade; an unknown device gets `404`, a
+request without `Upgrade: websocket` gets `426 { error: "upgrade_required" }`.
+
+Types are in `packages/device-sdk/src/gamepad.ts`.
+
+| Direction | Message | Meaning |
+|---|---|---|
+| Phone to hub | `GamepadFrame` `{ s, b, lx, ly, rx, ry }` as JSON text | A full snapshot: `s` counts up, `b` is a bitmask in `GAMEPAD_BUTTONS` order, sticks -100 to 100. Send on every change and at least every `HEARTBEAT_MS` (40 ms). |
+| Hub to phone | `{ t: "state", connected, output }` | On connect and whenever the output's connection changes |
+| Hub to phone | `{ t: "ack", s, ms }` | Frame `s` was written; `ms` is hub receive to output write |
+| Hub to phone | `{ t: "error", reason: "invalid" }` | The frame did not match `GamepadFrameSchema` and was dropped. After 20 invalid frames in a row the hub closes the socket (code 1008). |
+| Hub to phone | `{ t: "error", reason: "busy" }` | Another phone is the controller for this device; the socket is closed (code 1013) |
+
+Rules the hub keeps:
+- A frame whose `s` is not greater than the last one is ignored (late or repeated).
+- At most 250 frames per second per socket: a faster frame waits for the gap and is replaced by any
+  newer one, so only the newest is written.
+- **Watchdog:** when no frame arrives for `WATCHDOG_MS` (100 ms), or the socket closes or fails, the hub
+  releases every button and centres the sticks. Nothing stays held after a Wi-Fi drop.
+- One controller session per device at a time.
 
 ## Results
 A command answers `{ ok: true, applied: "confirmed" | "assumed", ms }` when the device confirmed the new
@@ -32,5 +64,5 @@ with `reason` one of `unsupported`, `invalidState`, `unreachable`, `timeout`, `n
 `blocked` commands are never sent, whatever the request says.
 
 Errors outside commands use the dr4w error bodies: `400 { error: "invalid_request", issues }`,
-`403 { error: "forbidden" }`, `404 { error: "not_found" }`, `429 { error: "rate_limited" }`,
-`500 { error: "internal" }`.
+`403 { error: "forbidden" }`, `404 { error: "not_found" }`, `409 { error: "read_only" | "too_many" }`,
+`426 { error: "upgrade_required" }`, `429 { error: "rate_limited" }`, `500 { error: "internal" }`.

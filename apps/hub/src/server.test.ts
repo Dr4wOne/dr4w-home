@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
@@ -8,8 +8,10 @@ import {
   TvSession,
 } from '@dr4w-home/adapter-android-tv'
 import { DEMO_SCENES, DemoAdapter } from '@dr4w-home/adapter-demo'
+import { PRESETS } from '@dr4w-home/device-sdk'
 import { describe, expect, it } from 'vitest'
 import { Config } from './config.ts'
+import { MAX_PROFILES, ProfileStore } from './profiles.ts'
 import { Registry } from './registry.ts'
 import { adminProof, createApp } from './server.ts'
 
@@ -30,8 +32,10 @@ async function setup(opts: { as?: string; webDir?: string; tv?: FakeRemote } = {
   await new Promise((r) => setTimeout(r, 10))
   const registry = new Registry([demo, tv], DEMO_SCENES)
   let as = opts.as ?? '192.0.2.50'
+  const profiles = new ProfileStore(join(mkdtempSync(join(tmpdir(), 'dr4w-profiles-')), 'p.json'))
   const app = createApp({
     registry,
+    profiles,
     secret: Buffer.alloc(32, 7),
     baseUrl: 'http://192.0.2.1:8790',
     version: '0.1.0',
@@ -69,7 +73,16 @@ async function setup(opts: { as?: string; webDir?: string; tv?: FakeRemote } = {
       headers: { cookie, 'content-type': 'application/json', ...headers },
       body: JSON.stringify(body),
     })
-  return { app, demo, tvRemote, session, signIn, post, setIp: (v: string) => (as = v) }
+  return {
+    app,
+    demo,
+    tvRemote,
+    session,
+    signIn,
+    post,
+    profiles,
+    setIp: (v: string) => (as = v),
+  }
 }
 
 describe('signing a phone in', () => {
@@ -226,6 +239,21 @@ describe('web app and config', () => {
         ],
       }),
     ).toThrow()
+    const example = Config.parse(
+      JSON.parse(
+        readFileSync(
+          new URL('../../../examples/config/config.example.json', import.meta.url),
+          'utf8',
+        ),
+      ),
+    )
+    expect(example.adapters.find((a) => a.type === 'nintendo-switch')?.devices).toMatchObject([
+      {
+        tvDeviceId: 'tv',
+        tvInputAppId: 'com-mediatek-wwtv-tvcenter',
+        output: { kind: 'bluetooth' },
+      },
+    ])
   })
 })
 
@@ -265,5 +293,53 @@ describe('minting sign-in links behind a reverse proxy', () => {
     ).toBe(403)
     expect((await post({})).status).toBe(403)
     expect((await post({ 'x-dr4w-admin': proof })).status).toBe(200)
+  })
+})
+
+describe('controller profiles', () => {
+  const mine = {
+    id: 'my-layout',
+    name: 'Mine',
+    controls: [{ id: 'a', kind: 'button', binds: 'a', x: 0.8, y: 0.5, size: 0.2, opacity: 1 }],
+  }
+  it("lists the built-in presets first, saves and deletes the owner's own, behind the CSRF guard", async () => {
+    const { app, signIn, profiles } = await setup()
+    const { cookie } = await signIn()
+    const call = (method: string, path: string, body?: unknown, csrf = true) =>
+      app.request(path, {
+        method,
+        headers: {
+          cookie,
+          'content-type': 'application/json',
+          ...(csrf ? { 'x-dr4w-client': '1' } : {}),
+        },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      })
+    const list = (await (await call('GET', '/api/controller-profiles')).json()) as { id: string }[]
+    expect(list.map((p) => p.id)).toEqual(PRESETS.map((p) => p.id))
+    expect((await call('PUT', '/api/controller-profiles/my-layout', mine, false)).status).toBe(403)
+    expect((await call('PUT', '/api/controller-profiles/other', mine)).status).toBe(400)
+    expect(
+      (await call('PUT', '/api/controller-profiles/my-layout', { ...mine, x: 1 })).status,
+    ).toBe(400)
+    expect(
+      (await call('PUT', '/api/controller-profiles/party', { ...mine, id: 'party' })).status,
+    ).toBe(409)
+    expect((await call('PUT', '/api/controller-profiles/my-layout', mine)).status).toBe(200)
+    expect(statSync(profiles.file).mode & 0o777).toBe(0o600)
+    expect(
+      ((await (await call('GET', '/api/controller-profiles')).json()) as unknown[]).at(-1),
+    ).toEqual(mine)
+    expect((await call('DELETE', '/api/controller-profiles/party')).status).toBe(409)
+    expect((await call('DELETE', '/api/controller-profiles/my-layout')).status).toBe(200)
+    expect((await call('DELETE', '/api/controller-profiles/my-layout')).status).toBe(404)
+  })
+
+  it('keeps at most 50', async () => {
+    const { profiles } = await setup()
+    for (let i = 0; i < MAX_PROFILES; i++)
+      expect(profiles.put({ ...mine, id: `p${i}` } as never)).toBe('ok')
+    expect(profiles.put({ ...mine, id: 'one-more' } as never)).toBe('too_many')
+    expect(profiles.put({ ...mine, id: 'p3', name: 'Renamed' } as never)).toBe('ok')
   })
 })

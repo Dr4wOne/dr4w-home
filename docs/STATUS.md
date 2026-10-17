@@ -3,7 +3,10 @@
 **As of:** 2026-10-17 · Part A done pending approval: the repository is public and the showcase is live (G3 passed)
 
 ## In progress
-- Waiting for the owner's approval of Part A before Part B starts.
+- Part B, Switch 2 hub side (branch `build/sw-hub`): live controller WebSocket `/api/gamepad/:id` with
+  watchdog, demo and Bluetooth (nxbt sidecar) outputs, `adapter-nintendo-switch`, controller profiles
+  API with built-in presets, latency judge (demo output: p95 about 1 ms send to ack). The root sidecar
+  is written but not installed or run on hardware yet; the web controller is built separately.
 
 ## Done
 - Packages: `device-sdk` (capabilities incl. `mode`, schemas), `adapter-android-tv` (protocol, supervised
@@ -20,6 +23,8 @@
 1. Part B: Nintendo Switch and Switch 2 (discovery first, gate G4).
 
 ## Known issues
+- Switch 2 "turn on" stops after the TV is on: the TV adapter blocks `inputSource` (no read-back), so the
+  console's input is not selected and "on screen" stays unknown.
 - HDMI input switching on the TV is not confirmed: no read-back from the protocol (discovery.md).
 - Web app Lighthouse performance is 99 (LCP 1.8 s): the font preload costs a point, and without it the
   app almost never renders in its own typeface.

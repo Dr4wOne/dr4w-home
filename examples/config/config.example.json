@@ -13,6 +13,19 @@
           "mac": "02:00:5e:00:53:01"
         }
       ]
+    },
+    {
+      "type": "nintendo-switch",
+      "devices": [
+        {
+          "id": "switch2",
+          "name": "Nintendo Switch 2",
+          "room": "Living room",
+          "tvDeviceId": "tv",
+          "tvInputId": "hdmi2",
+          "output": { "kind": "bluetooth", "socket": "/run/dr4w-home/gamepad.sock" }
+        }
+      ]
     }
   ],
   "scenes": [

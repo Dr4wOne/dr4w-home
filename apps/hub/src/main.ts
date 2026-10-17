@@ -5,11 +5,14 @@ import { networkInterfaces } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { DEMO_SCENES } from '@dr4w-home/adapter-demo'
-import type { DeviceAdapter } from '@dr4w-home/device-sdk'
+import type { Hub } from '@dr4w-home/adapter-nintendo-switch'
+import type { Device, DeviceAdapter } from '@dr4w-home/device-sdk'
 import { serve } from '@hono/node-server'
+import { WebSocketServer } from 'ws'
 import { ADAPTERS, type AdapterTypeName } from './adapters.ts'
 import { configPath, loadConfig } from './config.ts'
 import { log } from './log.ts'
+import { ProfileStore } from './profiles.ts'
 import { Registry } from './registry.ts'
 import { createApp } from './server.ts'
 
@@ -22,13 +25,26 @@ if (demo)
     config: configPath(),
   })
 
+// Adapters are created before the registry, so `hub` forwards to it once it exists.
+const hubListeners = new Set<(d: Device) => void>()
+const hub: Hub = {
+  devices: () => registry.devices(),
+  execute: (id, command) => registry.execute(id, command),
+  subscribe: (l) => {
+    hubListeners.add(l)
+    return () => hubListeners.delete(l)
+  },
+}
 const adapters: DeviceAdapter[] = []
 for (const a of config.adapters) {
   const t = ADAPTERS[a.type as AdapterTypeName]
-  adapters.push(await t.create((a.devices ?? []) as never[], { log }))
+  adapters.push(await t.create((a.devices ?? []) as never[], { log, hub }))
 }
 const scenes = config.scenes.length || !demo ? config.scenes : DEMO_SCENES
 const registry = new Registry(adapters, scenes)
+registry.subscribe((d) => {
+  for (const l of hubListeners) l(d)
+})
 
 const stateDir = config.stateDir ?? dir
 const secretFile = join(stateDir, 'hub-secret')
@@ -50,13 +66,15 @@ const baseUrl =
 
 const app = createApp({
   registry,
+  profiles: new ProfileStore(join(dir, 'controller-profiles.json')),
   secret: Buffer.from(readFileSync(secretFile, 'utf8').trim(), 'hex'),
   baseUrl,
   version: pkg.version,
   webDir: fileURLToPath(new URL('../../web/dist/', import.meta.url)),
 })
 
-serve({ fetch: app.fetch, port: config.port, hostname: config.bind }, () =>
+const websocket = { server: new WebSocketServer({ noServer: true }) }
+serve({ fetch: app.fetch, port: config.port, hostname: config.bind, websocket }, () =>
   log('info', 'hub listening', { url: baseUrl, devices: registry.devices().length, demo }),
 )
 for (const sig of ['SIGINT', 'SIGTERM'] as const)
