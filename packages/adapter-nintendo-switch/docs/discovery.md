@@ -41,6 +41,10 @@ The Switch 1 gets its own page later: Switch 2 results are not assumed to hold f
 
 Waking a sleeping Switch 2 without touching a real controller is not shown by any source yet.
 
+**Decision for now (owner, 2026-10-17):** both paths, wired first. The parts for the wired bridge are
+not at hand yet, so the hub ships with the Bluetooth path (verified below) and the wired bridge plugs
+in later as a second output behind the same interface.
+
 ## The owner's setup (read on screen, nothing changed, 2026-10-17)
 | Item | Value |
 |---|---|
@@ -58,3 +62,11 @@ Waking a sleeping Switch 2 without touching a real controller is not shown by an
   menu open over it, `com.android.tv.settings`. The package says "an external input or a TV channel
   is showing", not which input, and nothing about the console itself. The hub therefore shows the
   console as **assumed** on: the input app is in front and the hub itself selected the console's input.
+- **Bluetooth emulation works on this Switch 2 (system 23.0.1), 2026-10-17.** NXBT 0.1.4 (upstream
+  Brikwerk/nxbt, run as root from a venv, Switch 1 Pro Controller identity) on the laptop's Intel
+  AX201 adapter with BlueZ 5.64. Paired through Change Grip/Order 47.6 s after the script started
+  (most of it walking to the screen). On the console's Test Controller Buttons screen the owner saw
+  the sequence arrive: A, B, X, Y, L, R, ZL, ZR, the four D-pad directions, both stick clicks, and both
+  sticks in four directions. Still connected at the end. NXBT's BlueZ override (`--noplugin=*`, a
+  runtime file under `/run/systemd`) was removed afterwards and Bluetooth restarted normally.
+  Not tested yet: reconnection after the console sleeps, latency, and long sessions.
