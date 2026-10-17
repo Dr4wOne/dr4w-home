@@ -9,20 +9,24 @@
     "dev": "node --watch src/main.ts",
     "cli": "node src/cli.ts",
     "typecheck": "tsc -p .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "latency": "node scripts/gamepad-latency.ts"
   },
   "dependencies": {
     "@dr4w-home/adapter-android-tv": "workspace:*",
     "@dr4w-home/adapter-demo": "workspace:*",
+    "@dr4w-home/adapter-nintendo-switch": "workspace:*",
     "@dr4w-home/device-sdk": "workspace:*",
     "@hono/node-server": "catalog:",
     "hono": "catalog:",
     "qrcode": "catalog:",
+    "ws": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",
     "@types/qrcode": "catalog:",
+    "@types/ws": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }
