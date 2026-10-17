@@ -61,15 +61,17 @@ sudo usermod -aG dr4w-home "$USER"
 # 2. A root-owned venv with nxbt, and a root-owned copy of the sidecar (root never runs a file the
 #    hub's user can edit).
 sudo install -d -m 0755 /opt/dr4w-home
-sudo python3 -m venv /opt/dr4w-home/nxbt-venv
-sudo /opt/dr4w-home/nxbt-venv/bin/pip install nxbt==0.1.4   # needs the D-Bus and Python headers
+sudo apt install python3-dbus   # nxbt's dbus-python; building it from pip needs extra headers
+sudo python3 -m venv --system-site-packages /opt/dr4w-home/nxbt-venv
+sudo /opt/dr4w-home/nxbt-venv/bin/pip install --no-deps nxbt==0.1.4
+sudo /opt/dr4w-home/nxbt-venv/bin/pip install blessed psutil pynput cryptography 'Flask<3' 'Flask-SocketIO<6' 'eventlet<0.36'
 sudo install -m 0755 -o root -g root apps/hub/sidecar/nxbt-sidecar.py /opt/dr4w-home/nxbt-sidecar.py
 sudo /opt/dr4w-home/nxbt-venv/bin/python -I /opt/dr4w-home/nxbt-sidecar.py --self-test
 
 # 3. The system service.
 sudo install -m 0644 -o root -g root apps/hub/sidecar/dr4w-home-nxbt.service /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable --now dr4w-home-nxbt
+sudo systemctl start dr4w-home-nxbt   # on demand; `enable --now` to start it at every boot
 journalctl -u dr4w-home-nxbt -f
 ```
 
