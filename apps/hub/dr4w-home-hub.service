@@ -1,0 +1,28 @@
+# systemd user unit for the dr4w home hub. Install:
+#   cp apps/hub/dr4w-home-hub.service ~/.config/systemd/user/
+#   systemctl --user daemon-reload && systemctl --user enable --now dr4w-home-hub
+#   loginctl enable-linger "$USER"   # keep it running while nobody is logged in
+# WorkingDirectory assumes the repo at ~/dr4w-home; edit it if yours is elsewhere.
+# ExecStart needs Node 24. systemd does not load nvm, so with nvm put the full path from `which node`
+# here (for example ~/.nvm/versions/node/v24.x/bin/node, written out in full).
+[Unit]
+Description=dr4w home hub
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/dr4w-home/apps/hub
+ExecStart=/usr/bin/env node src/main.ts
+Restart=always
+RestartSec=2
+Environment=NODE_ENV=production
+# The hub only needs its config and state directory and the network.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=%h/.config/dr4w-home
+UMask=0077
+
+[Install]
+WantedBy=default.target

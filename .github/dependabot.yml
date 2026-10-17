@@ -1,0 +1,23 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: weekly }
+    cooldown: { default-days: 3 } # matches pnpm's minimum release age policy
+    ignore:
+      # Types follow the Node runtime (24); bump together with .nvmrc.
+      - dependency-name: '@types/node'
+        update-types: [version-update:semver-major]
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directories: [/, /.github/actions/*]
+    schedule: { interval: weekly }
+    cooldown: { default-days: 3 }
+
+  - package-ecosystem: docker
+    directory: /
+    schedule: { interval: weekly }
+    cooldown: { default-days: 3 }

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(wrangler deploy:*)",
+      "Bash(npx wrangler deploy:*)",
+      "Bash(pnpm exec wrangler deploy:*)"
+    ]
+  }
+}

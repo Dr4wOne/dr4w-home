@@ -1,0 +1,15 @@
+node_modules
+dist
+.turbo
+.wrangler
+.taste-skill
+.env*
+!.env.example
+.dev.vars
+*.pem
+coverage
+playwright-report
+test-results
+dist-*
+.vitest
+.claude/settings.local.json

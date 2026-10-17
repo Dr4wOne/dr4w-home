@@ -1,0 +1,10 @@
+{
+  "source": "Median times measured on a real Android TV over home Wi-Fi with read-back (100 volume commands: p50 51 ms, p95 64 ms); power and app times from single timed runs. Consoles and lamp: estimates until measured.",
+  "keyMs": 51,
+  "jitterMs": 14,
+  "powerOnMs": 2800,
+  "powerOffMs": 2000,
+  "appLaunchMs": 1300,
+  "cecMs": 1800,
+  "lightMs": 120
+}

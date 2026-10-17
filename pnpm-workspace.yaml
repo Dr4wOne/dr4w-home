@@ -1,0 +1,35 @@
+packages:
+  - packages/*
+  - apps/*
+
+# Dependencies allowed to run install scripts (pnpm blocks all others).
+allowBuilds:
+  esbuild: true
+  workerd: true
+
+# One version of each shared dependency. Same versions as the dr4w monorepo where both use a package.
+catalog:
+  '@biomejs/biome': 2.5.15
+  '@fontsource-variable/albert-sans': 5.3.0
+  '@hono/node-server': 2.1.5
+  '@peculiar/x509': 2.1.0
+  '@playwright/test': 1.64.1
+  '@testing-library/dom': 10.4.2
+  '@testing-library/react': 16.3.3
+  '@types/node': 24.19.2
+  '@types/qrcode': 1.5.6
+  '@types/react': 19.3.0
+  '@types/react-dom': 19.3.0
+  '@vitejs/plugin-react': 6.1.2
+  hono: 4.13.13
+  jsdom: 30.1.2
+  qrcode: 1.5.4
+  react: 19.3.0
+  reflect-metadata: 0.2.2
+  react-dom: 19.3.0
+  turbo: 2.11.8
+  typescript: 7.0.2
+  vite: 8.3.4
+  vitest: 5.0.4
+  wrangler: 4.151.0
+  zod: 4.6.7

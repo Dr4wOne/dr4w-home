@@ -1,0 +1,60 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TURBO_TELEMETRY_DISABLED: '1'
+  GITLEAKS_VERSION: 8.30.1
+  GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+      - run: pnpm lint
+      - run: pnpm turbo run typecheck test build
+      - run: pnpm exec vitest run scripts
+
+  privacy:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # scan the whole history, not only the last commit
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - name: Secret scan (gitleaks, whole history)
+        run: |
+          curl -sSfL -o gl.tgz "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gl.tgz" | sha256sum -c -
+          tar -xzf gl.tgz gitleaks
+          ./gitleaks git --redact --no-banner .
+      - name: Personal data check (private IPs, MAC addresses, the owner's deny-list)
+        env:
+          # Kept as a secret so the list of identifiers does not itself leak. Empty on forks:
+          # the check then still covers IP and MAC patterns.
+          PRIVACY_DENYLIST: ${{ secrets.PRIVACY_DENYLIST }}
+        run: node scripts/privacy.ts check
+      - name: Personal data check over history (deny-listed identifiers)
+        env:
+          PRIVACY_DENYLIST: ${{ secrets.PRIVACY_DENYLIST }}
+        run: |
+          cp scripts/privacy.ts "$RUNNER_TEMP/privacy.mts" # the current checker, run against every commit
+          for c in $(git rev-list HEAD); do
+            git checkout -q "$c" -- . 2>/dev/null || continue
+            node "$RUNNER_TEMP/privacy.mts" check --deny-only >/dev/null || { echo "Personal data in commit $c"; node "$RUNNER_TEMP/privacy.mts" check --deny-only; exit 1; }
+          done
+          git checkout -q HEAD -- .

@@ -1,0 +1,13 @@
+# The hub on the home network. Host networking is needed: Wake-on-LAN is a broadcast and TVs are
+# found by mDNS, neither of which crosses Docker's bridge network. (Linux only; on macOS run the hub
+# with pnpm instead, see docs/quickstart.md.)
+services:
+  hub:
+    build: .
+    network_mode: host
+    restart: unless-stopped
+    volumes:
+      # Config, paired TVs and the phone sign-in secret. Never inside the image or the repo.
+      - ${DR4W_HOME_DIR:-~/.config/dr4w-home}:/config
+    environment:
+      DR4W_HOME_CONFIG: /config/config.json

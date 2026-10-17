@@ -1,0 +1,39 @@
+{
+  "port": 8790,
+  "bind": "0.0.0.0",
+  "adapters": [
+    {
+      "type": "android-tv",
+      "devices": [
+        {
+          "id": "tv",
+          "name": "Living room TV",
+          "room": "Living room",
+          "stateDir": "android-tv/living-room-tv",
+          "mac": "02:00:5e:00:53:01"
+        }
+      ]
+    }
+  ],
+  "scenes": [
+    {
+      "id": "movie-night",
+      "name": "Movie night",
+      "synonyms": ["film", "watch a movie"],
+      "steps": [
+        { "deviceId": "tv", "command": { "type": "power", "op": "set", "on": true } },
+        {
+          "deviceId": "tv",
+          "command": { "type": "appLauncher", "op": "launch", "appId": "netflix" }
+        },
+        { "deviceId": "tv", "command": { "type": "volume", "op": "set", "level": 22 } }
+      ]
+    },
+    {
+      "id": "goodnight",
+      "name": "Goodnight",
+      "synonyms": ["all off", "bedtime"],
+      "steps": [{ "deviceId": "tv", "command": { "type": "power", "op": "set", "on": false } }]
+    }
+  ]
+}

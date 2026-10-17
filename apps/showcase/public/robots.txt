@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://home.dr4w.io/sitemap.xml

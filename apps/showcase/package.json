@@ -1,0 +1,36 @@
+{
+  "name": "@dr4w-home/showcase",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && vite build --ssr src/prerender.tsx --outDir dist-ssr && node scripts/prerender.mjs",
+    "preview": "vite preview",
+    "typecheck": "tsc -p .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@dr4w-home/adapter-demo": "workspace:*",
+    "@dr4w-home/client": "workspace:*",
+    "@dr4w-home/device-sdk": "workspace:*",
+    "@dr4w-home/intent": "workspace:*",
+    "@dr4w-home/web": "workspace:*",
+    "@fontsource-variable/albert-sans": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "catalog:",
+    "@testing-library/react": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "jsdom": "catalog:",
+    "wrangler": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  }
+}

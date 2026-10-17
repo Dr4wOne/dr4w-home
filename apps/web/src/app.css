@@ -1,0 +1,684 @@
+/* Hub app for direction B: phone first, one thumb, the ring on every control. */
+
+.app {
+  min-height: 100svh;
+  padding-bottom: calc(96px + env(safe-area-inset-bottom));
+}
+
+.app-head,
+.home,
+.sheet,
+.down-banner {
+  width: 100%;
+  max-width: 680px;
+  margin-inline: auto;
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+}
+
+.app-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: max(14px, env(safe-area-inset-top));
+  padding-bottom: 6px;
+}
+
+/* Under the header, inside the content column, so the header never moves when it appears. */
+.app .demo-banner {
+  width: calc(100% - 2 * max(16px, env(safe-area-inset-left)));
+  max-width: 648px;
+  margin: 6px auto 0;
+  padding: 10px 16px;
+  border-radius: 14px;
+}
+
+.app-head .wordmark {
+  font-size: var(--step-body);
+}
+
+.app-head .hub-state {
+  margin-right: auto;
+}
+
+.settings {
+  position: relative;
+}
+
+.settings summary {
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: var(--surface);
+  cursor: pointer;
+  font-size: var(--step-small);
+}
+
+.settings summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings-body {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 40;
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  min-width: 240px;
+  background: var(--surface-2);
+  border-radius: 18px;
+  box-shadow: 0 18px 40px rgb(0 0 0 / 0.28); /* taste-skill-ignore: it floats (menu, toast, dialog) */
+}
+
+.settings-body .btn {
+  justify-content: flex-start;
+  background: var(--bg);
+}
+
+.btn[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.down-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-radius: 18px;
+}
+
+@media (min-width: 712px) {
+  .down-banner {
+    max-width: 648px;
+  }
+}
+
+.down-banner .btn.ink {
+  background: var(--accent-ink);
+  color: var(--accent);
+  flex: none;
+}
+
+.home {
+  display: grid;
+  gap: 24px;
+  padding-top: 18px;
+}
+
+.home-title {
+  font-size: var(--step-head);
+}
+
+.group-title {
+  font-size: var(--step-body);
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+.app .command-field,
+.app .scenes .btn {
+  background: var(--surface);
+}
+
+.app .scenes {
+  margin-top: 0;
+}
+
+.cards {
+  gap: 8px;
+}
+
+.app .device {
+  background: var(--surface);
+  padding: 12px 12px 12px 16px;
+  border-radius: var(--radius);
+}
+
+.app .device-open {
+  min-height: 56px;
+}
+
+.app.is-down .power-btn {
+  opacity: 0.5;
+}
+
+@media (min-width: 600px) {
+  .cards {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* ---------- Device view ---------- */
+.sheet {
+  display: grid;
+  gap: 20px;
+  padding-top: 14px;
+}
+
+.sheet-head {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 14px 12px;
+  align-items: center;
+}
+
+.back {
+  grid-column: 1 / -1;
+  justify-self: start;
+  background: var(--surface);
+  min-height: 44px;
+  padding: 0 18px;
+}
+
+.sheet-title {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  color: var(--muted);
+}
+
+.sheet-title h1 {
+  font-size: var(--step-head);
+  color: var(--ink);
+  outline: none;
+}
+
+.sheet-state {
+  color: var(--muted);
+  font-size: var(--step-body);
+  margin-top: 6px;
+}
+
+.sheet-head .power-btn {
+  width: 64px;
+  height: 64px;
+}
+
+.sheet-head .power-btn .ring {
+  --size: 28px;
+}
+
+.hint {
+  color: var(--muted);
+  font-size: var(--step-small);
+  max-width: 46ch;
+}
+
+.works-with {
+  color: var(--muted);
+  font-size: var(--step-small);
+}
+
+/* The D-pad is the ring at hand size: a circle with the crimson OK at its centre. */
+.remote {
+  display: grid;
+  gap: 22px;
+}
+
+.pad {
+  --ring-gap: var(--surface);
+  justify-self: center;
+  width: min(80vw, 300px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--surface);
+  display: grid;
+  grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+  padding: 8px;
+}
+
+.pad-btn,
+.pad-ok {
+  border: 0;
+  background: none;
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  min-width: 44px;
+  min-height: 44px;
+  transition:
+    transform 140ms var(--ease-out),
+    background-color var(--t-hover) ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pad-btn:active,
+.pad-ok:active {
+  transform: scale(0.88);
+  background: var(--surface-2);
+  transition-duration: 0s;
+}
+
+.pad-btn:disabled,
+.pad-ok:disabled {
+  opacity: 0.45;
+}
+
+.pad .up {
+  grid-area: 1 / 2;
+}
+
+.pad .left {
+  grid-area: 2 / 1;
+}
+
+.pad .left svg {
+  rotate: -90deg;
+}
+
+.pad .right {
+  grid-area: 2 / 3;
+}
+
+.pad .right svg {
+  rotate: 90deg;
+}
+
+.pad .down {
+  grid-area: 3 / 2;
+}
+
+.pad .down svg {
+  rotate: 180deg;
+}
+
+.pad-ok {
+  grid-area: 2 / 2;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+  font-size: var(--step-lead);
+}
+
+.pad-ok:active {
+  background: color-mix(in srgb, var(--accent) 80%, var(--ink));
+}
+
+.remote-side {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
+.row3,
+.row2,
+.grid2,
+.grid-inputs {
+  display: grid;
+  gap: 8px;
+}
+
+.row3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.row2,
+.grid2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+.row3 .btn,
+.row2 .btn,
+.grid2 .btn,
+.grid-inputs .btn {
+  min-height: 56px;
+  padding: 0 12px;
+  background: var(--surface);
+}
+
+.row3 .btn[aria-pressed="true"],
+.row2 .btn[aria-pressed="true"],
+.grid2 .btn[aria-pressed="true"],
+.grid-inputs .btn[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.volume .btn {
+  font-size: var(--step-lead);
+}
+
+.volume .level {
+  font-variant-numeric: tabular-nums;
+}
+
+.volume .level[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.caps,
+.lamp,
+.console {
+  display: grid;
+  gap: 24px;
+}
+
+.slider {
+  display: grid;
+  gap: 10px;
+}
+
+.slider-top {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 500;
+}
+
+.slider output {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.slider input {
+  width: 100%;
+  height: 44px;
+  accent-color: var(--accent);
+}
+
+/* Landscape on a phone: the remote splits into pad and buttons side by side. */
+@media (orientation: landscape) and (max-height: 540px) {
+  .app-head,
+  .home,
+  .sheet,
+  .down-banner {
+    max-width: none;
+  }
+
+  .cards {
+    grid-template-columns: 1fr;
+  }
+
+  .home {
+    grid-template-columns: 1fr 1fr;
+    column-gap: 24px;
+    align-items: start;
+  }
+
+  .home-title,
+  .home .command {
+    grid-column: 1 / -1;
+  }
+
+  .remote {
+    grid-template-columns: auto 1fr;
+    align-items: start;
+    column-gap: 28px;
+  }
+
+  .remote .hint {
+    grid-column: 1 / -1;
+  }
+
+  .pad {
+    width: min(60vh, 260px);
+  }
+
+  .sheet-title h1 {
+    font-size: var(--step-lead);
+  }
+
+  .sheet-head .power-btn {
+    width: 52px;
+    height: 52px;
+  }
+
+  .grid-inputs {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .sheet-head {
+    grid-template-columns: auto 1fr auto;
+  }
+
+  .back {
+    grid-column: auto;
+  }
+}
+
+/* The card grows into the device view (shared element). */
+::view-transition-group(*) {
+  animation-duration: 340ms;
+  animation-timing-function: var(--ease-out);
+}
+
+/* ---------- Confirm dialog (native modal: inert page, Escape cancels) ---------- */
+.confirm {
+  width: min(440px, calc(100vw - 32px));
+  border: 0;
+  border-radius: var(--radius);
+  padding: 24px;
+  background: var(--surface-2);
+  color: var(--ink);
+  box-shadow: 0 24px 60px rgb(0 0 0 / 0.35); /* taste-skill-ignore: it floats (dialog) */
+}
+
+.confirm::backdrop {
+  background: rgb(10 10 15 / 0.6);
+}
+
+.confirm[open] {
+  animation: confirm-in 220ms var(--ease-out);
+}
+
+/* transform only: text in the dialog is readable at full contrast from the first frame */
+@keyframes confirm-in {
+  from {
+    transform: translateY(16px) scale(0.98);
+  }
+}
+
+.confirm h2 {
+  font-size: var(--step-lead);
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.confirm p {
+  margin-top: 10px;
+  color: var(--muted);
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.confirm-actions .btn:not(.primary) {
+  background: var(--bg);
+}
+
+/* ---------- Sign-in and out-of-reach screens ---------- */
+.gate {
+  max-width: 560px;
+}
+
+.gate p {
+  max-width: 46ch;
+}
+
+.gate-code {
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 16px 18px;
+  overflow-x: auto;
+  font-size: var(--step-small);
+}
+
+.hub-state.wait .dot {
+  background: var(--muted);
+}
+
+.hub-state-spacer {
+  margin-right: auto;
+}
+
+.hint code {
+  font-size: 0.95em;
+}
+
+/* ---------- iPhone on its side (852 × 393): the whole remote on one screen ----------
+   Pad on the left, sized to the height that is left; every other control in four short rows. */
+@media (orientation: landscape) and (max-height: 540px) {
+  .app {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .app .demo-banner,
+  .down-banner {
+    max-width: none;
+    width: calc(
+      100% -
+      max(16px, env(safe-area-inset-left)) -
+      max(16px, env(safe-area-inset-right))
+    );
+    margin-inline: auto;
+  }
+
+  .app .demo-banner {
+    padding-block: 6px;
+    margin-top: 2px;
+    font-size: 0.8125rem;
+  }
+
+  .down-banner {
+    padding: 8px 8px 8px 16px;
+  }
+
+  .app-head {
+    padding-top: max(4px, env(safe-area-inset-top));
+    padding-bottom: 0;
+  }
+
+  .sheet {
+    gap: 8px;
+    padding-top: 0;
+  }
+
+  .sheet-head {
+    gap: 12px;
+  }
+
+  .sheet-title svg {
+    display: none;
+  }
+
+  .sheet-title h1 {
+    font-size: 1.375rem;
+  }
+
+  .sheet-state {
+    margin-top: 2px;
+    font-size: var(--step-small);
+  }
+
+  .sheet-head .power-btn {
+    width: 48px;
+    height: 48px;
+  }
+
+  .sheet-head .power-btn .ring {
+    --size: 22px;
+  }
+
+  .sheet-tv .works-with {
+    display: none;
+  }
+
+  .remote {
+    grid-template-columns: auto 1fr;
+    gap: 0 20px;
+    align-items: center;
+  }
+
+  .remote .hint {
+    grid-column: 1 / -1;
+  }
+
+  .pad {
+    width: min(calc(100svh - 168px - env(safe-area-inset-bottom)), 250px);
+    padding: 4px;
+  }
+
+  .pad-ok {
+    font-size: var(--step-body);
+  }
+
+  .remote-side {
+    gap: 8px;
+  }
+
+  .remote-side .group-title {
+    position: absolute;
+    width: 1px;
+    height: 1px; /* taste-skill-ignore: visually hidden heading, not a rule */
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .remote-side .group {
+    display: contents;
+  }
+
+  .row3 .btn,
+  .grid2 .btn,
+  .grid-inputs .btn {
+    min-height: 44px;
+    font-size: var(--step-small);
+  }
+
+  .volume .btn {
+    font-size: var(--step-body);
+  }
+
+  .grid2 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .grid-inputs {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
+  gap: 8px;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.choices legend {
+  padding: 0 0 8px;
+  color: var(--muted);
+}
+
+.choices .btn {
+  min-height: 56px;
+  padding: 0 12px;
+  background: var(--surface);
+}
+
+.choices .btn[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--bg);
+}

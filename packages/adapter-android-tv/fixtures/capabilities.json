@@ -1,0 +1,271 @@
+{
+  "capturedAt": "2026-10-16T00:00:00.000Z",
+  "results": [
+    {
+      "step": "HOME",
+      "ok": true,
+      "detail": "confirmed in 453 ms; state {\"power\":true,\"app\":\"com.google.android.apps.tv.launcherx\"}"
+    },
+    {
+      "step": "launch YouTube",
+      "ok": true,
+      "detail": "confirmed in 1312 ms; state {\"power\":true,\"app\":\"com.google.android.youtube.tv\"}"
+    },
+    {
+      "step": "BACK/HOME to launcher",
+      "ok": true,
+      "detail": "confirmed in 277 ms; state {\"power\":true,\"app\":\"com.google.android.apps.tv.launcherx\"}"
+    },
+    {
+      "step": "POWER off",
+      "ok": true,
+      "detail": "confirmed in 2015 ms; state {\"power\":false,\"app\":\"com.google.android.apps.tv.launcherx\"}"
+    },
+    {
+      "step": "WAKEUP on the open connection",
+      "ok": false,
+      "detail": "power false"
+    },
+    {
+      "step": "WAKEUP on a new connection",
+      "ok": false,
+      "detail": "NOT confirmed in 8001 ms; state {\"power\":false,\"app\":\"com.google.android.apps.tv.launcherx\"}"
+    }
+  ],
+  "frames": [
+    {
+      "dir": "in",
+      "t": 328,
+      "hex": "0a5508ff04124e0a0b344b20534d415254205456120341434d1801220231312a24636f6d2e676f6f676c652e616e64726f69642e74762e72656d6f74652e73657276696365320e302e30332e3030303030303030301801",
+      "step": "connect"
+    },
+    {
+      "dir": "out",
+      "t": 330,
+      "hex": "0a2808e70412230a046472347712046472347718012201312a0961747672656d6f74653205312e302e30",
+      "step": "connect"
+    },
+    {
+      "dir": "in",
+      "t": 337,
+      "hex": "1200",
+      "step": "connect"
+    },
+    {
+      "dir": "out",
+      "t": 337,
+      "hex": "120308e704",
+      "step": "connect"
+    },
+    {
+      "dir": "in",
+      "t": 353,
+      "hex": "92031b080210021a0b344b20534d41525420545620022800306438124000",
+      "step": "connect"
+    },
+    {
+      "dir": "in",
+      "t": 355,
+      "hex": "c202020801",
+      "step": "connect"
+    },
+    {
+      "dir": "in",
+      "t": 374,
+      "hex": "a201210a1f621d636f6d2e676f6f676c652e616e64726f69642e796f75747562652e7476",
+      "step": "connect"
+    },
+    {
+      "dir": "out",
+      "t": 780,
+      "hex": "520408031003",
+      "step": "HOME"
+    },
+    {
+      "dir": "in",
+      "t": 1232,
+      "hex": "a201280a266224636f6d2e676f6f676c652e616e64726f69642e617070732e74762e6c61756e6368657278",
+      "step": "HOME"
+    },
+    {
+      "dir": "out",
+      "t": 2034,
+      "hex": "520408161003",
+      "step": "DPAD_RIGHT"
+    },
+    {
+      "dir": "out",
+      "t": 2734,
+      "hex": "520408151003",
+      "step": "DPAD_LEFT"
+    },
+    {
+      "dir": "out",
+      "t": 3438,
+      "hex": "520408141003",
+      "step": "DPAD_DOWN"
+    },
+    {
+      "dir": "out",
+      "t": 4139,
+      "hex": "520408131003",
+      "step": "DPAD_UP"
+    },
+    {
+      "dir": "out",
+      "t": 4842,
+      "hex": "d205190a1768747470733a2f2f7777772e796f75747562652e636f6d",
+      "step": "launch YouTube"
+    },
+    {
+      "dir": "in",
+      "t": 6153,
+      "hex": "a201210a1f621d636f6d2e676f6f676c652e616e64726f69642e796f75747562652e7476",
+      "step": "launch YouTube"
+    },
+    {
+      "dir": "out",
+      "t": 6954,
+      "hex": "520408031003",
+      "step": "BACK/HOME to launcher"
+    },
+    {
+      "dir": "in",
+      "t": 7231,
+      "hex": "a201280a266224636f6d2e676f6f676c652e616e64726f69642e617070732e74762e6c61756e6368657278",
+      "step": "BACK/HOME to launcher"
+    },
+    {
+      "dir": "out",
+      "t": 8032,
+      "hex": "5204081a1003",
+      "step": "POWER off"
+    },
+    {
+      "dir": "in",
+      "t": 8922,
+      "hex": "92031b080210021a0b344b20534d41525420545620022800306438004001",
+      "step": "POWER off"
+    },
+    {
+      "dir": "in",
+      "t": 10047,
+      "hex": "c202020800",
+      "step": "POWER off"
+    },
+    {
+      "dir": "in",
+      "t": 13112,
+      "hex": "4208080110eedab1cd04",
+      "step": "standby"
+    },
+    {
+      "dir": "out",
+      "t": 13112,
+      "hex": "4a020801",
+      "step": "standby"
+    },
+    {
+      "dir": "in",
+      "t": 18278,
+      "hex": "4208080210c582b2cd04",
+      "step": "standby"
+    },
+    {
+      "dir": "out",
+      "t": 18278,
+      "hex": "4a020802",
+      "step": "standby"
+    },
+    {
+      "dir": "out",
+      "t": 20850,
+      "hex": "520508e0011003",
+      "step": "standby"
+    },
+    {
+      "dir": "in",
+      "t": 100,
+      "hex": "0a5508ff04124e0a0b344b20534d415254205456120341434d1801220231312a24636f6d2e676f6f676c652e616e64726f69642e74762e72656d6f74652e73657276696365320e302e30332e3030303030303030301801",
+      "step": "reconnect in standby"
+    },
+    {
+      "dir": "out",
+      "t": 101,
+      "hex": "0a2808e70412230a046472347712046472347718012201312a0961747672656d6f74653205312e302e30",
+      "step": "reconnect in standby"
+    },
+    {
+      "dir": "in",
+      "t": 107,
+      "hex": "1200",
+      "step": "reconnect in standby"
+    },
+    {
+      "dir": "out",
+      "t": 107,
+      "hex": "120308e704",
+      "step": "reconnect in standby"
+    },
+    {
+      "dir": "in",
+      "t": 116,
+      "hex": "92031b080210021a0b344b20534d41525420545620022800306438004001",
+      "step": "reconnect in standby"
+    },
+    {
+      "dir": "in",
+      "t": 116,
+      "hex": "c202020800",
+      "step": "reconnect in standby"
+    },
+    {
+      "dir": "in",
+      "t": 116,
+      "hex": "a201280a266224636f6d2e676f6f676c652e616e64726f69642e617070732e74762e6c61756e6368657278",
+      "step": "reconnect in standby"
+    },
+    {
+      "dir": "out",
+      "t": 517,
+      "hex": "520508e0011003",
+      "step": "WAKEUP on a new connection"
+    },
+    {
+      "dir": "in",
+      "t": 30913,
+      "hex": "4208080310c0c2b2cd04",
+      "step": "WAKEUP on a new connection"
+    },
+    {
+      "dir": "out",
+      "t": 30913,
+      "hex": "4a020803",
+      "step": "WAKEUP on a new connection"
+    },
+    {
+      "dir": "in",
+      "t": 6388,
+      "hex": "4208080110dfddb2cd04",
+      "step": "WAKEUP on a new connection"
+    },
+    {
+      "dir": "out",
+      "t": 6388,
+      "hex": "4a020801",
+      "step": "WAKEUP on a new connection"
+    },
+    {
+      "dir": "in",
+      "t": 35947,
+      "hex": "4208080410cfe9b2cd04",
+      "step": "WAKEUP on a new connection"
+    },
+    {
+      "dir": "out",
+      "t": 35947,
+      "hex": "4a020804",
+      "step": "WAKEUP on a new connection"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "name": "dr4w-home",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "packageManager": "pnpm@12.11.2",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "dev:demo": "pnpm --filter @dr4w-home/web dev",
+    "hub": "pnpm --filter @dr4w-home/hub cli",
+    "device:new": "node scripts/device-new.ts",
+    "build": "turbo run build",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "privacy": "node scripts/privacy.ts check",
+    "check": "pnpm lint && pnpm privacy && turbo run typecheck test build && vitest run scripts"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "catalog:",
+    "@types/node": "catalog:",
+    "turbo": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
