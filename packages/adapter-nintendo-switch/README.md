@@ -78,6 +78,8 @@ journalctl -u dr4w-home-nxbt -f
 First pairing: on the console open **Controllers → Change Grip/Order** while the service runs. The
 sidecar then stores the Switch's address in `/var/lib/dr4w-home-nxbt/switch-address.json` (root only)
 and reconnects to it on later starts; reconnecting needs the console awake and not on that screen.
+When the console sleeps the connection drops; the sidecar tries to reconnect every 10 s, so the
+controller comes back within about 10 s of the console waking up.
 
 While the service runs, nxbt has started BlueZ with all its plugins off (`--noplugin=*`), so other
 Bluetooth keyboards, mice, game controllers and headphones on this machine stop working. Stopping the service (`sudo systemctl stop

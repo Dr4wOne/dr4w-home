@@ -20,6 +20,7 @@ import json
 import os
 import signal
 import socketserver
+import subprocess
 import sys
 import threading
 import time
@@ -38,6 +39,16 @@ NXBT_KEYS = {
 }
 AXES = ("lx", "ly", "rx", "ry")
 MAX_LINE = 512
+RETRY_S = 10  # while the known Switch is away (asleep), try to reconnect this often
+BLUEZ_OVERRIDE = "/run/systemd/system/bluetooth.service.d/nxbt.conf"  # written by nxbt on start
+
+
+QUIET = False  # the self-test checks its own output only
+
+
+def log(level, msg, **fields):
+    if not QUIET:
+        print(json.dumps({"level": level, "msg": msg, **fields}), flush=True)
 
 
 def valid_frame(m):
@@ -74,7 +85,34 @@ class Pad:
         self.lock = threading.Lock()
         self.address_file = address_file
         self.saved = read_addresses(address_file)
-        self.index = nx.create_controller(nxbt.PRO_CONTROLLER, reconnect_address=self.saved or None)
+        self.kind = nxbt.PRO_CONTROLLER
+        self.retry_at = 0.0
+        self.index = self.create()
+
+    def create(self):
+        return self.nx.create_controller(self.kind, reconnect_address=self.saved or None)
+
+    def recover(self, now):
+        """Bring the controller back after the Switch went away.
+
+        When the Switch sleeps, nxbt tries to reconnect twice, then either marks the controller crashed
+        and stops, or falls back to waiting for any Switch to pair (which a known Switch never does).
+        Either way, start a fresh controller that reconnects to the saved Switch, every RETRY_S.
+        """
+        state = self.state()
+        if now < self.retry_at or not (state == "crashed" or (self.saved and state == "connecting")):
+            return
+        self.retry_at = now + RETRY_S
+        if state == "crashed":
+            errors = str(self.nx.state[self.index].get("errors") or "").strip().splitlines()
+            log("error", "nxbt controller crashed", reason=errors[-1] if errors else "unknown")
+        with self.lock:
+            try:
+                self.nx.remove_controller(self.index)
+            except ValueError:
+                pass  # a crashed controller may already be gone
+            self.index = self.create()
+        log("info", "nxbt controller restarted", reconnect=bool(self.saved))
 
     def state(self):
         try:
@@ -183,25 +221,45 @@ def serve(args):
 
     def watch():
         while True:
-            pad.remember_switch()
+            try:
+                pad.remember_switch()
+                pad.recover(time.monotonic())
+            except Exception as e:  # the watcher must outlive any one nxbt hiccup
+                log("error", "watch failed", reason=repr(e))
             time.sleep(2)
 
     threading.Thread(target=watch, daemon=True).start()
-    print(json.dumps({"level": "info", "msg": "nxbt sidecar listening", "socket": args.socket}), flush=True)
+    log("info", "nxbt sidecar listening", socket=args.socket)
     try:
         server.serve_forever()
     finally:
         try:
             pad.release()
-        finally:
-            server.server_close()
-            if os.path.exists(args.socket):
-                os.unlink(args.socket)
-            nxbt.toggle_clean_bluez(False)  # give BlueZ its plugins back
-            print(json.dumps({"level": "info", "msg": "nxbt sidecar stopped"}), flush=True)
+        except Exception:
+            pass  # nxbt's processes may already be gone (systemd signals the whole group)
+        server.server_close()
+        if os.path.exists(args.socket):
+            os.unlink(args.socket)
+        restore_bluez()
+        log("info", "nxbt sidecar stopped")
+        # nxbt's multiprocessing children can block a normal exit; nothing is left to flush.
+        os._exit(0)
+
+
+def restore_bluez():
+    """Give BlueZ its plugins back. Not nxbt.toggle_clean_bluez(False): it waits for the restart, and
+    systemd will not restart bluetooth.service (we are ordered after it) until we have stopped."""
+    try:
+        os.remove(BLUEZ_OVERRIDE)
+    except FileNotFoundError:
+        return
+    subprocess.run(["systemctl", "daemon-reload"], check=False)
+    subprocess.run(["systemctl", "--no-block", "restart", "bluetooth"], check=False)
 
 
 def self_test():
+    global QUIET
+    QUIET = True
     template = {
         "L_STICK": {"PRESSED": False, "X_VALUE": 0, "Y_VALUE": 0},
         "R_STICK": {"PRESSED": False, "X_VALUE": 0, "Y_VALUE": 0},
@@ -243,6 +301,34 @@ def self_test():
     assert handle(pad, b'{"op":"release"}') is None and not pad.nx.sent[-1]["A"]
     for bad in (b"nope", b"[]", b'{"op":"macro"}', b'{"op":"release","x":1}', b'{"op":"frame"}'):
         assert handle(pad, bad) == {"error": "invalid"}, bad
+
+    class FakeLifecycle:
+        def __init__(self):
+            self.state, self.created = {0: {"state": "crashed", "errors": "x\nBrokenPipeError"}}, []
+
+        def remove_controller(self, index):
+            self.state.pop(index)
+
+        def create_controller(self, kind, reconnect_address=None):
+            self.created.append(reconnect_address)
+            index = len(self.created)
+            self.state[index] = {"state": "reconnecting"}
+            return index
+
+    pad.nx, pad.kind, pad.retry_at, pad.saved = FakeLifecycle(), "pro", 0.0, ["switch"]
+    pad.recover(100.0)  # crashed: a fresh controller reconnects to the saved Switch
+    assert pad.index == 1 and pad.nx.created == [["switch"]]
+    pad.nx.state[1]["state"] = "connecting"  # nxbt gave up and waits for any Switch
+    pad.recover(105.0)  # not before RETRY_S
+    assert pad.nx.created == [["switch"]]
+    pad.recover(110.0)
+    assert pad.index == 2 and len(pad.nx.created) == 2
+    pad.nx.state[2]["state"] = "connected"
+    pad.recover(200.0)
+    assert len(pad.nx.created) == 2
+    pad.saved, pad.nx.state[2]["state"] = [], "connecting"  # first pairing: leave it waiting
+    pad.recover(300.0)
+    assert len(pad.nx.created) == 2
     print("self-test ok")
 
 
