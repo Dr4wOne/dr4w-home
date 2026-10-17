@@ -39,7 +39,8 @@ NXBT_KEYS = {
 }
 AXES = ("lx", "ly", "rx", "ry")
 MAX_LINE = 512
-RETRY_S = 10  # while the known Switch is away (asleep), try to reconnect this often
+RETRY_S = 10  # after a crash, wait this long before starting a new controller (BlueZ needs the pause)
+LISTEN_S = 170  # nxbt is discoverable for 180 s; renew before that runs out, and retry the known Switch
 BLUEZ_OVERRIDE = "/run/systemd/system/bluetooth.service.d/nxbt.conf"  # written by nxbt on start
 
 
@@ -86,47 +87,63 @@ class Pad:
         self.address_file = address_file
         self.saved = read_addresses(address_file)
         self.kind = nxbt.PRO_CONTROLLER
-        self.retry_at = 0.0
+        self.index = None
+        self.created_at = time.monotonic()
         self.index = self.create()
 
     def create(self):
+        """A controller that first tries the saved Switch, then waits, discoverable, to be paired."""
         return self.nx.create_controller(self.kind, reconnect_address=self.saved or None)
 
     def recover(self, now):
-        """Bring the controller back after the Switch went away.
+        """Keep a controller the Switch can reach, whatever happened to the last one.
 
-        When the Switch sleeps, nxbt tries to reconnect twice, then either marks the controller crashed
-        and stops, or falls back to waiting for any Switch to pair (which a known Switch never does).
-        Either way, start a fresh controller that reconnects to the saved Switch, every RETRY_S.
+        When the Switch sleeps or refuses a reconnect, nxbt marks the controller crashed and stops; when
+        it waits to be paired, it stops being discoverable after 180 s. Start a fresh controller after a
+        crash (not sooner than RETRY_S after the last one) or when the pairing window is about to close.
         """
         state = self.state()
-        if now < self.retry_at or not (state == "crashed" or (self.saved and state == "connecting")):
+        if state == "connected":
             return
-        self.retry_at = now + RETRY_S
+        age = now - self.created_at
+        if age < RETRY_S or (state not in ("crashed", "unknown") and age < LISTEN_S):
+            return
         if state == "crashed":
             errors = str(self.nx.state[self.index].get("errors") or "").strip().splitlines()
             log("error", "nxbt controller crashed", reason=errors[-1] if errors else "unknown")
         with self.lock:
-            try:
-                self.nx.remove_controller(self.index)
-            except ValueError:
-                pass  # a crashed controller may already be gone
+            if self.index is not None:
+                try:
+                    self.nx.remove_controller(self.index)
+                except ValueError:
+                    pass  # a crashed controller may already be gone
+            self.index, self.created_at = None, now  # if create fails, the next tick tries again
             self.index = self.create()
-        log("info", "nxbt controller restarted", reconnect=bool(self.saved))
+        log("info", "nxbt controller restarted", was=state, reconnect=bool(self.saved))
 
     def state(self):
+        if self.index is None:
+            return "unknown"
         try:
             return self.nx.state[self.index]["state"]
         except (KeyError, IndexError):
             return "unknown"
 
-    def apply(self, frame):
+    def send(self, packet):
+        """Input for a controller that is gone (crashed, being replaced) is dropped, not an error."""
         with self.lock:
-            self.nx.set_controller_input(self.index, to_packet(frame, self.nx.create_input_packet()))
+            if self.index is None:
+                return
+            try:
+                self.nx.set_controller_input(self.index, packet)
+            except ValueError:
+                pass
+
+    def apply(self, frame):
+        self.send(to_packet(frame, self.nx.create_input_packet()))
 
     def release(self):
-        with self.lock:
-            self.nx.set_controller_input(self.index, self.nx.create_input_packet())
+        self.send(self.nx.create_input_packet())
 
     def remember_switch(self):
         """After the first pairing, keep the Switch's address so the next start reconnects."""
@@ -302,11 +319,13 @@ def self_test():
     for bad in (b"nope", b"[]", b'{"op":"macro"}', b'{"op":"release","x":1}', b'{"op":"frame"}'):
         assert handle(pad, bad) == {"error": "invalid"}, bad
 
-    class FakeLifecycle:
+    class FakeLifecycle(FakeNx):
         def __init__(self):
             self.state, self.created = {0: {"state": "crashed", "errors": "x\nBrokenPipeError"}}, []
 
         def remove_controller(self, index):
+            if index not in self.state:
+                raise ValueError("Specified controller does not exist")  # as nxbt does
             self.state.pop(index)
 
         def create_controller(self, kind, reconnect_address=None):
@@ -315,20 +334,24 @@ def self_test():
             self.state[index] = {"state": "reconnecting"}
             return index
 
-    pad.nx, pad.kind, pad.retry_at, pad.saved = FakeLifecycle(), "pro", 0.0, ["switch"]
-    pad.recover(100.0)  # crashed: a fresh controller reconnects to the saved Switch
+    pad.nx, pad.kind, pad.created_at, pad.saved = FakeLifecycle(), "pro", 95.0, ["switch"]
+    pad.recover(100.0)  # crashed, but too soon after the last start
+    assert pad.nx.created == []
+    pad.recover(105.0)  # crashed: a fresh controller that tries the saved Switch first
     assert pad.index == 1 and pad.nx.created == [["switch"]]
-    pad.nx.state[1]["state"] = "connecting"  # nxbt gave up and waits for any Switch
-    pad.recover(105.0)  # not before RETRY_S
-    assert pad.nx.created == [["switch"]]
-    pad.recover(110.0)
+    pad.nx.state[1]["state"] = "connecting"  # waiting to be paired
+    pad.recover(105.0 + LISTEN_S - 1)
+    assert len(pad.nx.created) == 1
+    pad.recover(105.0 + LISTEN_S)  # the pairing window is closing: renew it
     assert pad.index == 2 and len(pad.nx.created) == 2
     pad.nx.state[2]["state"] = "connected"
-    pad.recover(200.0)
+    pad.recover(1000.0)
     assert len(pad.nx.created) == 2
-    pad.saved, pad.nx.state[2]["state"] = [], "connecting"  # first pairing: leave it waiting
-    pad.recover(300.0)
-    assert len(pad.nx.created) == 2
+    pad.nx.state.pop(2)  # gone without a trace: "unknown" is recovered too
+    pad.recover(1000.0)
+    assert pad.index == 3
+    pad.index = None  # a create that failed: input is dropped, not an error
+    assert handle(pad, json.dumps(ok).encode()) is None and handle(pad, b'{"op":"release"}') is None
     print("self-test ok")
 
 

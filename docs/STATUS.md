@@ -25,6 +25,8 @@
 1. Part B: Nintendo Switch and Switch 2 (discovery first, gate G4).
 
 ## Known issues
+- Switch 2 refuses nxbt's reconnect after it sleeps (`Connection reset by peer`, system 23.0.1): pair
+  again with Change Grip/Order after waking it. The wired Pico bridge would not have this problem.
 - Switch 2 "turn on" stops after the TV is on: the TV adapter blocks `inputSource` (no read-back), so the
   console's input is not selected and "on screen" stays unknown.
 - HDMI input switching on the TV is not confirmed: no read-back from the protocol (discovery.md).
