@@ -144,3 +144,21 @@ it('reports the controller connection from the output', async () => {
   expect(capability(dev(a), 'gamepad')?.state.connected).toMatchObject({ value: false })
   expect(dev(a).availability.status).toBe('unknown')
 })
+
+it('finds its TV through a hub that also lists the console itself (as main.ts wires it)', () => {
+  const adapters: { devices(): Device[] }[] = [{ devices: () => [tv('on')] }]
+  const hub: Hub = {
+    devices: () => adapters.flatMap((a) => a.devices()),
+    subscribe: () => () => {},
+    execute: async () => ({ ok: true, applied: 'confirmed', ms: 0 }),
+  }
+  const sw = new NintendoSwitchAdapter([cfg], {
+    hub,
+    log: () => {},
+    makeOutput: () => new DemoOutput(),
+  })
+  adapters.push(sw)
+  expect(hub.devices().map((d) => d.id)).toEqual(['tv', 'switch2'])
+  expect(capability(sw.devices()[0] as Device, 'power')?.via?.deviceId).toBe('tv')
+  void sw.close?.()
+})

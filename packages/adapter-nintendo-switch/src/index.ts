@@ -184,8 +184,19 @@ export class NintendoSwitchAdapter implements DeviceAdapter {
     }
   }
 
+  #lookingUp = false
   #device(c: Console): Device {
-    const tv = this.#hub.devices().find((d) => d.id === c.cfg.tvDeviceId)
+    // hub.devices() includes this adapter's own devices, so it calls back in here: answer the inner
+    // call without the TV instead of recursing (the outer call gets the TV from the TV's adapter).
+    let tv: Device | undefined
+    if (!this.#lookingUp) {
+      this.#lookingUp = true
+      try {
+        tv = this.#hub.devices().find((d) => d.id === c.cfg.tvDeviceId)
+      } finally {
+        this.#lookingUp = false
+      }
+    }
     return toDevice(c.cfg, tv, c.selectedAt, c.output.connected())
   }
 
