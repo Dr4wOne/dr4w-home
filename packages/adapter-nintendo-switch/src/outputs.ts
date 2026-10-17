@@ -1,7 +1,12 @@
 // Where live controller input goes. `demo` records frames (tests, demo mode); `bluetooth` hands them
 // to the root nxbt sidecar over a Unix socket (apps/hub/sidecar, protocol in docs/protocol.md).
 import { createConnection, type Socket } from 'node:net'
-import { type GamepadFrame, type GamepadOutput, NEUTRAL } from '@dr4w-home/device-sdk'
+import {
+  type GamepadFrame,
+  type GamepadOutput,
+  type GamepadWaiting,
+  NEUTRAL,
+} from '@dr4w-home/device-sdk'
 
 type Frame = Omit<GamepadFrame, 's'>
 export type Log = (level: 'info' | 'error', msg: string, data?: Record<string, unknown>) => void
@@ -129,6 +134,12 @@ export class BluetoothSidecarOutput implements GamepadOutput {
     const { b, lx, ly, rx, ry } = frame
     this.#pending = `${JSON.stringify({ op: 'frame', b, lx, ly, rx, ry })}\n`
     this.#flush()
+  }
+
+  /** No socket: the sidecar service is not running. A socket but no Switch: pair on the console. */
+  waiting(): GamepadWaiting | undefined {
+    if (!this.#sock) return 'down'
+    return this.#switch ? undefined : 'pair'
   }
 
   release() {

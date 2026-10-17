@@ -52,12 +52,20 @@ export interface GamepadOutput {
   release(): void
   close(): Promise<void>
   connected(): boolean
+  /** Optional: why `connected()` is false, so the phone can say what to do. */
+  waiting?(): GamepadWaiting | undefined
 }
+
+/**
+ * Why an output does not reach the console: `pair` means the console has to pair with it (on a
+ * Switch: Change Grip/Order); `down` means the hub cannot reach what drives it (the sidecar service).
+ */
+export type GamepadWaiting = 'pair' | 'down'
 
 /** Hub to phone, on the same socket. `ms` is hub receive to output write for frame `s`. */
 export type GamepadServerMessage =
   | { t: 'ack'; s: number; ms: number }
-  | { t: 'state'; connected: boolean; output: GamepadOutput['kind'] }
+  | { t: 'state'; connected: boolean; output: GamepadOutput['kind']; waiting?: GamepadWaiting }
   | { t: 'error'; reason: 'busy' | 'unreachable' | 'invalid'; detail?: string }
 
 // A saved layout from the controller builder. Positions and sizes are fractions of the screen in

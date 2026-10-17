@@ -4,6 +4,7 @@ import {
   type GamepadFrame,
   type GamepadOutput,
   type GamepadServerMessage,
+  type GamepadWaiting,
   HEARTBEAT_MS,
   NEUTRAL,
 } from '@dr4w-home/device-sdk'
@@ -16,6 +17,8 @@ export type GamepadStatus = {
   output?: GamepadOutput['kind']
   /** Whether the output reaches the console, as the hub last said. */
   outputConnected?: boolean
+  /** When it does not: what is missing (`pair`: pair on the console; `down`: the hub's service). */
+  outputWaiting?: GamepadWaiting
   /** Phone send to hub acknowledgement, in ms, for the newest acknowledged frame. */
   latencyMs?: number
   detail?: string
@@ -116,7 +119,8 @@ export function hubGamepad(url: string, deps: GamepadDeps = {}): GamepadSession 
         const at = sentAt.get(m.s)
         if (at !== undefined) status.set({ latencyMs: Math.round(now() - at) })
         for (const k of sentAt.keys()) if (k <= m.s) sentAt.delete(k)
-      } else if (m?.t === 'state') status.set({ output: m.output, outputConnected: m.connected })
+      } else if (m?.t === 'state')
+        status.set({ output: m.output, outputConnected: m.connected, outputWaiting: m.waiting })
       else if (m?.t === 'error')
         status.set({ state: m.reason === 'busy' ? 'busy' : 'error', detail: m.detail ?? m.reason })
     }

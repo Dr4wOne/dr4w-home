@@ -1,5 +1,5 @@
 import { DemoOutput } from '@dr4w-home/adapter-nintendo-switch'
-import { mask, NEUTRAL, WATCHDOG_MS } from '@dr4w-home/device-sdk'
+import { type GamepadWaiting, mask, NEUTRAL, WATCHDOG_MS } from '@dr4w-home/device-sdk'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { GamepadSessions, MAX_INVALID } from './gamepad.ts'
 
@@ -37,6 +37,26 @@ describe('live controller session', () => {
     expect(out.current).toEqual({ b: mask(['a']), lx: 50, ly: 0, rx: 0, ry: 0 })
     expect(ws.sent[1]).toMatchObject({ t: 'ack', s: 1 })
     session.close()
+  })
+
+  it('says why the output does not reach the console, and when that changes', async () => {
+    let link: GamepadWaiting | undefined = 'down'
+    const out = Object.assign(new DemoOutput(), {
+      connected: () => link === undefined,
+      waiting: () => link,
+    })
+    const ws = fakeSocket()
+    const session = new GamepadSessions().open('switch2', out, ws)
+    expect(ws.sent).toEqual([{ t: 'state', connected: false, output: 'demo', waiting: 'down' }])
+    link = 'pair'
+    vi.advanceTimersByTime(500)
+    expect(ws.sent[1]).toEqual({ t: 'state', connected: false, output: 'demo', waiting: 'pair' })
+    link = undefined
+    vi.advanceTimersByTime(500)
+    expect(ws.sent[2]).toEqual({ t: 'state', connected: true, output: 'demo' })
+    vi.advanceTimersByTime(500)
+    expect(ws.sent).toHaveLength(3)
+    session?.close()
   })
 
   it('ignores frames that are not newer than the last one', async () => {

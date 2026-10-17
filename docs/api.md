@@ -43,7 +43,7 @@ Types are in `packages/device-sdk/src/gamepad.ts`.
 | Direction | Message | Meaning |
 |---|---|---|
 | Phone to hub | `GamepadFrame` `{ s, b, lx, ly, rx, ry }` as JSON text | A full snapshot: `s` counts up, `b` is a bitmask in `GAMEPAD_BUTTONS` order, sticks -100 to 100. Send on every change and at least every `HEARTBEAT_MS` (40 ms). |
-| Hub to phone | `{ t: "state", connected, output }` | On connect and whenever the output's connection changes |
+| Hub to phone | `{ t: "state", connected, output, waiting? }` | On connect and whenever the output's connection changes. When `connected` is false, `waiting` (if the output knows) says what is missing: `pair` (pair on the console, e.g. Change Grip/Order) or `down` (the hub cannot reach the service that drives the console) |
 | Hub to phone | `{ t: "ack", s, ms }` | Frame `s` was written; `ms` is hub receive to output write |
 | Hub to phone | `{ t: "error", reason: "invalid" }` | The frame did not match `GamepadFrameSchema` and was dropped. After 20 invalid frames in a row the hub closes the socket (code 1008). |
 | Hub to phone | `{ t: "error", reason: "busy" }` | Another phone is the controller for this device; the socket is closed (code 1013) |

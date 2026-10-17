@@ -34,8 +34,16 @@ function statusText(s: GamepadStatus): { text: string; tone: 'ok' | 'wait' | 'ba
     }
   if (s.state === 'closed') return { text: 'Paused', tone: 'wait' }
   if (s.state === 'connecting') return { text: 'Connecting…', tone: 'wait' }
-  if (s.outputConnected === false)
+  if (s.outputConnected === false) {
+    if (s.outputWaiting === 'down')
+      return { text: 'The controller service is not running on the hub', tone: 'bad' }
+    if (s.outputWaiting === 'pair' && s.output === 'bluetooth')
+      return {
+        text: 'Not paired: on the Switch, open Controllers → Change Grip/Order',
+        tone: 'wait',
+      }
     return { text: 'Hub connected, console not paired', tone: 'wait' }
+  }
   const parts = ['Connected']
   if (s.output) parts.push(OUTPUT[s.output] ?? s.output)
   if (s.latencyMs !== undefined) parts.push(`${s.latencyMs} ms`)

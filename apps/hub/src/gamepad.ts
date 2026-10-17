@@ -5,6 +5,7 @@ import {
   type GamepadFrame,
   type GamepadOutput,
   type GamepadServerMessage,
+  type GamepadWaiting,
   WATCHDOG_MS,
 } from '@dr4w-home/device-sdk'
 import { GamepadFrameSchema } from '@dr4w-home/device-sdk/schema'
@@ -45,23 +46,39 @@ export class GamepadSession {
   #watchdog: ReturnType<typeof setTimeout> | undefined
   #poll: ReturnType<typeof setInterval>
   #connected: boolean
+  #waiting: GamepadWaiting | undefined
 
   constructor(output: GamepadOutput, ws: Socket, done: () => void) {
     this.#out = output
     this.#ws = ws
     this.#done = done
     this.#connected = output.connected()
+    this.#waiting = this.#why(this.#connected)
     this.#state()
     this.#poll = setInterval(() => {
-      if (this.#out.connected() !== this.#connected) {
-        this.#connected = !this.#connected
+      const connected = this.#out.connected()
+      const waiting = this.#why(connected)
+      if (connected !== this.#connected || waiting !== this.#waiting) {
+        this.#connected = connected
+        this.#waiting = waiting
         this.#state()
       }
     }, STATE_POLL_MS)
   }
 
+  #why(connected: boolean) {
+    return connected ? undefined : this.#out.waiting?.()
+  }
+
   #state() {
-    send(this.#ws, { t: 'state', connected: this.#connected, output: this.#out.kind })
+    const { kind } = this.#out
+    const waiting = this.#waiting
+    send(this.#ws, {
+      t: 'state',
+      connected: this.#connected,
+      output: kind,
+      ...(waiting && { waiting }),
+    })
   }
 
   message(data: unknown) {

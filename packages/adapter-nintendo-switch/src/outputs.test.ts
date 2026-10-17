@@ -75,8 +75,10 @@ it('reconnects with backoff after the sidecar restarts', async () => {
   cleanup.push(() => out.close())
   await out.connect()
   await until(() => out.connected())
+  expect(out.waiting()).toBeUndefined()
   await fake.stop()
   await until(() => !out.connected())
+  expect(out.waiting()).toBe('down') // the sidecar service is not running
   fake = fakeSidecar(path)
   cleanup.push(fake.stop)
   await fake.listening
@@ -96,4 +98,5 @@ it('is not connected while the sidecar has no Switch', async () => {
   await out.connect()
   await new Promise((r) => setTimeout(r, 60))
   expect(out.connected()).toBe(false)
+  expect(out.waiting()).toBe('pair') // the console has to pair on Change Grip/Order
 })
