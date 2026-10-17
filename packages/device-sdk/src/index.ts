@@ -1,6 +1,10 @@
 // The adapter contract and the capability model. Design notes and the Matter / Home Assistant
 // mapping behind each type: docs/capability-model.md.
 
+import type { PadButton } from './gamepad.ts'
+
+export * from './gamepad.ts'
+
 /** Where a value came from: read back from the device, or set by us and not yet confirmed. */
 export type Source = 'reported' | 'assumed'
 export type Value<T> = { known: true; value: T; source: Source; at: number } | { known: false }
@@ -90,23 +94,7 @@ export type LightColorCap = Base<
   { ctMinK: number; ctMaxK: number },
   { kelvin: Value<number> }
 >
-export type GamepadButton =
-  | 'a'
-  | 'b'
-  | 'x'
-  | 'y'
-  | 'l'
-  | 'r'
-  | 'zl'
-  | 'zr'
-  | 'plus'
-  | 'minus'
-  | 'home'
-  | 'capture'
-  | 'dpadUp'
-  | 'dpadDown'
-  | 'dpadLeft'
-  | 'dpadRight'
+export type GamepadButton = PadButton
 export type GamepadCap = Base<
   'gamepad',
   { layout: 'switch-pro'; buttons: GamepadButton[] },
