@@ -68,8 +68,10 @@ export type Control = {
   kind: ControlKind
   /** The button it presses; for a stick, which stick; for a d-pad, ignored. */
   binds: PadButton | 'left' | 'right' | 'dpad'
+  /** The control's centre. */
   x: number
   y: number
+  /** Diameter, as a fraction of the screen height. */
   size: number
   opacity: number
   label?: string
