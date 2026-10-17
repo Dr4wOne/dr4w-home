@@ -903,3 +903,36 @@
 .not-found h1 {
   font-size: var(--step-head);
 }
+
+/* ---------- Controller: the phone as a gamepad, on a simulated console ---------- */
+.pad-section {
+  padding: 96px var(--margin) 48px;
+  display: grid;
+  gap: 32px;
+}
+
+.pad-words {
+  display: grid;
+  gap: 20px;
+  align-content: start;
+}
+
+.pad-words p {
+  max-width: 42ch;
+}
+
+@media (min-width: 900px) {
+  .pad-section {
+    grid-template-columns: repeat(12, 1fr);
+    column-gap: 24px;
+    align-items: start;
+  }
+
+  .pad-words {
+    grid-column: 1 / span 5;
+  }
+
+  .pad-section .pad-demo {
+    grid-column: 7 / -1;
+  }
+}

@@ -4,12 +4,16 @@ import { DEMO_SCENES, DemoAdapter, type DemoOptions } from '@dr4w-home/adapter-d
 import {
   type Command,
   type CommandResult,
+  type ControllerProfile,
   type Device,
   type DeviceAdapter,
   runScene,
   type Scene,
 } from '@dr4w-home/device-sdk'
 import { extraDemoAdapters } from './demo-adapters.ts'
+import { demoGamepad, type GamepadSession, hubGamepad, socketUrl, virtualPad } from './gamepad.ts'
+
+export * from './gamepad.ts'
 
 export type LinkStatus = 'live' | 'reconnecting' | 'down'
 export type SceneResult = { ok: boolean; failedStep?: number }
@@ -20,13 +24,72 @@ export interface HomeSource {
   subscribe(onDevice: (d: Device) => void, onStatus: (s: LinkStatus) => void): () => void
   execute(deviceId: string, command: Command, confirmed?: boolean): Promise<CommandResult>
   runScene(sceneId: string, onStep?: (step: number, of: number) => void): Promise<SceneResult>
+  /** Live controller input for a device with a `gamepad` capability (docs/controller.md). */
+  gamepad(deviceId: string): GamepadSession
+  /** Saved controller layouts. The presets are not included: they ship with the app. */
+  listProfiles(): Promise<ControllerProfile[]>
+  saveProfile(profile: ControllerProfile): Promise<void>
+  deleteProfile(id: string): Promise<void>
+}
+
+/** Only well-formed layouts get through; the schema loads with the first call, not with the app. */
+async function validProfiles(raw: unknown): Promise<ControllerProfile[]> {
+  const { ControllerProfileSchema } = await import('@dr4w-home/device-sdk/schema')
+  if (!Array.isArray(raw)) return []
+  return raw.flatMap((p) => {
+    const r = ControllerProfileSchema.safeParse(p)
+    return r.success ? [r.data] : []
+  })
+}
+
+const PROFILES_KEY = 'dr4w-home:controller-profiles'
+
+/** Demo layouts live in this browser only; private windows and blocked storage fall back to memory. */
+function localProfiles(storage: () => Pick<Storage, 'getItem' | 'setItem'> | undefined) {
+  let memory: ControllerProfile[] = []
+  const read = async () => {
+    try {
+      const text = storage()?.getItem(PROFILES_KEY)
+      if (text) memory = await validProfiles(JSON.parse(text))
+    } catch {}
+    return memory
+  }
+  const write = (all: ControllerProfile[]) => {
+    memory = all
+    try {
+      storage()?.setItem(PROFILES_KEY, JSON.stringify(all))
+    } catch {}
+  }
+  return {
+    listProfiles: read,
+    async saveProfile(p: ControllerProfile) {
+      const all = await read()
+      write(all.some((x) => x.id === p.id) ? all.map((x) => (x.id === p.id ? p : x)) : [...all, p])
+    },
+    async deleteProfile(id: string) {
+      write((await read()).filter((x) => x.id !== id))
+    },
+  }
+}
+
+const browserStorage = () => {
+  try {
+    return globalThis.localStorage
+  } catch {
+    return undefined
+  }
 }
 
 /** Everything in the browser: no network, nothing real controlled. */
 export function demoSource(
-  opts: DemoOptions & { extras?: boolean } = {},
-): HomeSource & { adapter: DemoAdapter; devices(): Device[] } {
+  opts: DemoOptions & {
+    extras?: boolean
+    storage?: () => Pick<Storage, 'getItem' | 'setItem'> | undefined
+  } = {},
+): HomeSource & { adapter: DemoAdapter; devices(): Device[]; pad: ReturnType<typeof virtualPad> } {
   const adapter = new DemoAdapter(opts)
+  // shortcut: one virtual console for every demo device; give each its own once the demo has two pads.
+  const pad = virtualPad()
   const all: DeviceAdapter[] = [adapter, ...(opts.extras === false ? [] : extraDemoAdapters())]
   const owner = (id: string) => all.find((a) => a.devices().some((d) => d.id === id))
   const devices = () => all.flatMap((a) => a.devices())
@@ -45,6 +108,9 @@ export function demoSource(
     kind: 'demo',
     adapter,
     devices,
+    pad,
+    gamepad: () => demoGamepad(pad),
+    ...localProfiles(opts.storage ?? browserStorage),
     load: async () => ({ devices: devices(), scenes: DEMO_SCENES }),
     subscribe(onDevice, onStatus) {
       onStatus('live')
@@ -90,7 +156,8 @@ export function hubSource(base = '', fetchImpl: typeof fetch = (...a) => fetch(.
           ? 'This phone is not signed in to the hub'
           : `Hub answered ${res.status}`,
       )
-    return (await res.json()) as T
+    const text = await res.text() // a DELETE may answer 204 with no body
+    return (text ? JSON.parse(text) : undefined) as T
   }
   return {
     kind: 'hub',
@@ -116,5 +183,16 @@ export function hubSource(base = '', fetchImpl: typeof fetch = (...a) => fetch(.
     // The hub runs scenes itself, so a scene finishes even if the phone locks halfway.
     runScene: (sceneId) =>
       call<SceneResult>(`/api/scenes/${encodeURIComponent(sceneId)}/run`, { method: 'POST' }),
+    gamepad: (id) => hubGamepad(socketUrl(base, `/api/gamepad/${encodeURIComponent(id)}`)),
+    listProfiles: async () => validProfiles(await call<unknown>('/api/controller-profiles')),
+    async saveProfile(p) {
+      await call(`/api/controller-profiles/${encodeURIComponent(p.id)}`, {
+        method: 'PUT',
+        body: JSON.stringify(p),
+      })
+    },
+    async deleteProfile(id) {
+      await call(`/api/controller-profiles/${encodeURIComponent(id)}`, { method: 'DELETE' })
+    },
   }
 }

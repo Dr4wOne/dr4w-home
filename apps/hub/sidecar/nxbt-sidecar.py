@@ -162,7 +162,7 @@ def make_handler(pad):
 def serve(args):
     import nxbt  # only here: the self-test runs without nxbt or root
 
-    nx = nxbt.Nxbt(disable_logging=True)  # this disables BlueZ's input plugin (toggle_clean_bluez(True))
+    nx = nxbt.Nxbt(disable_logging=True)  # restarts BlueZ with all plugins off (toggle_clean_bluez(True))
     pad = Pad(nx, nxbt, args.address_file)
 
     if os.path.exists(args.socket):

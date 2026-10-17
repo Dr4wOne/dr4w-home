@@ -11,6 +11,7 @@ import {
   type Danger,
   type Device,
   type DeviceAdapter,
+  GAMEPAD_BUTTONS,
   reported,
   type Scene,
   unknown,
@@ -137,6 +138,14 @@ function consoleDevice(id: string, name: string, worksWith: string): Device {
         features: {},
         state: { activity: unknown, title: unknown },
       },
+      // The phone controller (docs/controller.md): in demo mode it drives an in-memory console.
+      {
+        id: 'gamepad',
+        type: 'gamepad',
+        label: 'Controller',
+        features: { layout: 'switch-pro', buttons: [...GAMEPAD_BUTTONS] },
+        state: { connected: reported(true, 0) },
+      },
     ],
   }
 }
@@ -159,6 +168,7 @@ export const manifest: AdapterManifest = {
     'activity',
     'lightLevel',
     'lightColor',
+    'gamepad',
   ],
 }
 

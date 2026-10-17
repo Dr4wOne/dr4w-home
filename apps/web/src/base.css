@@ -476,6 +476,209 @@ button {
   color: var(--ink);
 }
 
+/* ---------- Choices: a row of named options (inputs, modes, controller layouts) ---------- */
+.choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
+  gap: 8px;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.choices legend {
+  padding: 0 0 8px;
+  color: var(--muted);
+}
+
+.choices .btn {
+  min-height: 56px;
+  padding: 0 12px;
+  background: var(--surface);
+}
+
+.choices .btn[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.room .choices .btn:not([aria-pressed="true"]) {
+  background: var(--bg);
+}
+
+/* ---------- Controller faces (player, builder, the showcase's virtual screen) ----------
+   A layout positions each control by its centre; size is a share of the surface height (cqh). */
+.pad-canvas {
+  position: relative;
+  container-type: size;
+}
+
+.pad-ctl {
+  position: absolute;
+  left: calc(var(--x) * 100%);
+  top: calc(var(--y) * 100%);
+  width: calc(var(--s) * 100cqh);
+  height: calc(var(--s) * 100cqh);
+  translate: -50% -50%;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--ink);
+  font-weight: 600;
+  font-size: calc(var(--s) * 36cqh);
+  line-height: 1;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.pad-shoulder {
+  width: calc(var(--s) * 200cqh);
+  height: calc(var(--s) * 60cqh);
+  border-radius: 999px;
+  font-size: calc(var(--s) * 30cqh);
+}
+
+/* Pressed: crimson at once, no transition, so feedback lands in the same frame as the touch. */
+.pad-button.is-down,
+.pad-shoulder.is-down {
+  background: var(--accent);
+  color: var(--accent-ink);
+  scale: 0.94;
+}
+
+.pad-stick {
+  background: var(--surface);
+  border: 3px solid var(--surface-2);
+}
+
+.pad-thumb {
+  width: 52%;
+  height: 52%;
+  border-radius: 50%;
+  background: var(--muted);
+  translate: calc(var(--tx) * 46%) calc(var(--ty) * 46%);
+}
+
+.pad-stick.is-down .pad-thumb {
+  background: var(--accent);
+}
+
+.pad-dpad {
+  background: var(--surface);
+  grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+  place-items: stretch;
+  padding: calc(var(--s) * 4cqh);
+}
+
+.pad-arm {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 30%;
+}
+
+.pad-arm svg {
+  width: 70%;
+  height: 70%;
+}
+
+.pad-arm.is-down {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.pad-arm.dpadUp {
+  grid-area: 1 / 2;
+}
+
+.pad-arm.dpadLeft {
+  grid-area: 2 / 1;
+  rotate: -90deg;
+}
+
+.pad-arm.dpadRight {
+  grid-area: 2 / 3;
+  rotate: 90deg;
+}
+
+.pad-arm.dpadDown {
+  grid-area: 3 / 2;
+  rotate: 180deg;
+}
+
+.controller {
+  display: grid;
+  gap: 16px;
+}
+
+.controller .row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.room .controller .btn:not(.primary, [aria-pressed="true"]) {
+  background: var(--bg);
+}
+
+/* The demo console's screen: a TV in the field colour, with the controls drawn small inside it. */
+.vscreen {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 16px;
+}
+
+.vscreen-tv {
+  --surface: color-mix(in srgb, var(--field-ink) 12%, var(--field));
+  --surface-2: color-mix(in srgb, var(--field-ink) 24%, var(--field));
+  --ink: var(--field-ink);
+  --muted: color-mix(in srgb, var(--field-ink) 60%, var(--field));
+  background: var(--field);
+  border-radius: 14px;
+  padding: 10px;
+}
+
+/* A TV stays dark in dark mode too (the field colour turns light there). */
+@media (prefers-color-scheme: dark) {
+  .vscreen-tv {
+    --surface: #15151b;
+    --surface-2: #2a2a35;
+    --ink: #efeff2;
+    --muted: #a3a2aa;
+    background: #000000;
+  }
+}
+
+.vscreen .pad-canvas {
+  aspect-ratio: 2 / 1;
+}
+
+.vscreen-read {
+  font-size: var(--step-small);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  min-height: 1.5em;
+}
+
+.vscreen.is-compact {
+  margin: 0;
+  width: 132px;
+}
+
+.vscreen.is-compact .vscreen-tv {
+  padding: 4px;
+  border-radius: 8px;
+}
+
+.pad-demo .room-foot span {
+  max-width: 34ch;
+}
+
 /* ---------- Command bar ---------- */
 .command {
   position: relative;

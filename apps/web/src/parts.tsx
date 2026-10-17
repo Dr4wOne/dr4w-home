@@ -57,6 +57,8 @@ let audio: AudioContext | undefined
 export function click(enabled: boolean) {
   if (!enabled) return
   audio ??= new AudioContext()
+  // iOS starts the context suspended until a touch; the first press unlocks it.
+  if (audio.state === 'suspended') void audio.resume()
   const o = audio.createOscillator()
   const g = audio.createGain()
   o.frequency.value = 1400
@@ -348,5 +350,51 @@ export function ConfirmDialog({ home }: { home: Home }) {
         </>
       )}
     </dialog>
+  )
+}
+
+export const Chevron = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path
+      d="M6 15l6-6 6 6"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+)
+
+/** A row of named options: inputs, fan speeds, modes. */
+export function Choice({
+  label,
+  options,
+  current,
+  onPick,
+  disabled,
+}: {
+  label: string
+  options: { id: string; name: string }[]
+  current?: string
+  onPick: (id: string) => void
+  disabled: boolean
+}) {
+  return (
+    <fieldset className="choices">
+      <legend>{label}</legend>
+      {options.map((o) => (
+        <button
+          key={o.id}
+          type="button"
+          className="btn"
+          aria-pressed={o.id === current}
+          disabled={disabled}
+          onClick={() => onPick(o.id)}
+        >
+          {o.name}
+        </button>
+      ))}
+    </fieldset>
   )
 }

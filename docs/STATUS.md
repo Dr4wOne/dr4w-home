@@ -3,10 +3,12 @@
 **As of:** 2026-10-17 · Part A done pending approval: the repository is public and the showcase is live (G3 passed)
 
 ## In progress
-- Part B, Switch 2 hub side (branch `build/sw-hub`): live controller WebSocket `/api/gamepad/:id` with
+- Part B, Switch 2 (branch `build/switch2`): live controller WebSocket `/api/gamepad/:id` with a
   watchdog, demo and Bluetooth (nxbt sidecar) outputs, `adapter-nintendo-switch`, controller profiles
-  API with built-in presets, latency judge (demo output: p95 about 1 ms send to ack). The root sidecar
-  is written but not installed or run on hardware yet; the web controller is built separately.
+  API with built-in presets, latency judge (demo output: p95 about 1 ms send to ack); the phone's
+  player, builder and the showcase's virtual screen (guide: `docs/controller.md`). Open: install the
+  root sidecar and test on the console; checks on a real iPhone (multi-touch feel, tilt sign and
+  permission, click sound unlock, Home Screen full screen).
 
 ## Done
 - Packages: `device-sdk` (capabilities incl. `mode`, schemas), `adapter-android-tv` (protocol, supervised
