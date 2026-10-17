@@ -4,8 +4,10 @@
 # /opt/dr4w-home, never a file in the hub user's checkout that the hub user could change.
 [Unit]
 Description=dr4w home: Bluetooth controller sidecar (nxbt)
+# Wants, not Requires: nxbt restarts bluetooth.service itself on start, and Requires would make
+# systemd stop and restart the sidecar along with it.
 After=bluetooth.service
-Requires=bluetooth.service
+Wants=bluetooth.service
 
 [Service]
 Type=simple
@@ -14,6 +16,8 @@ ExecStart=/opt/dr4w-home/nxbt-venv/bin/python -I /opt/dr4w-home/nxbt-sidecar.py 
 Group=dr4w-home
 Restart=on-failure
 RestartSec=5
+# nxbt's worker processes can leave the main process hanging on SIGTERM; don't wait 90 s for it.
+TimeoutStopSec=5
 # /run/dr4w-home (the socket) and /var/lib/dr4w-home-nxbt (the Switch's address, root only).
 RuntimeDirectory=dr4w-home
 RuntimeDirectoryMode=0750
@@ -21,7 +25,8 @@ StateDirectory=dr4w-home-nxbt
 StateDirectoryMode=0700
 UMask=0077
 # Hardening that still lets nxbt use Bluetooth, D-Bus and its BlueZ override under /run/systemd.
-# Not run on hardware yet: if the sidecar fails to start, remove CapabilityBoundingSet first.
+# CAP_NET_BIND_SERVICE: the HID control and interrupt channels are L2CAP PSMs 17 and 19, which are
+# privileged; without it nxbt retries the bind forever and never becomes discoverable.
 ProtectSystem=full
 NoNewPrivileges=yes
 PrivateTmp=yes
@@ -35,7 +40,7 @@ RestrictRealtime=yes
 RestrictSUIDSGID=yes
 LockPersonality=yes
 RestrictAddressFamilies=AF_UNIX AF_BLUETOOTH AF_NETLINK
-CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW CAP_CHOWN CAP_FOWNER CAP_DAC_OVERRIDE CAP_SYS_ADMIN
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW CAP_CHOWN CAP_FOWNER CAP_DAC_OVERRIDE CAP_SYS_ADMIN CAP_NET_BIND_SERVICE
 SystemCallArchitectures=native
 
 [Install]
