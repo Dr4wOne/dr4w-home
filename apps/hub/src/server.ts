@@ -3,21 +3,31 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { CommandRequestSchema, IdSchema } from '@dr4w-home/device-sdk/schema'
+import {
+  CommandRequestSchema,
+  ControllerProfileSchema,
+  IdSchema,
+} from '@dr4w-home/device-sdk/schema'
+import { upgradeWebSocket } from '@hono/node-server'
 import { getConnInfo } from '@hono/node-server/conninfo'
 import { serveStatic } from '@hono/node-server/serve-static'
 import { type Context, Hono } from 'hono'
 import { getCookie, setCookie } from 'hono/cookie'
 import { streamSSE } from 'hono/streaming'
+import { type GamepadSession, GamepadSessions } from './gamepad.ts'
 import { log } from './log.ts'
+import type { ProfileStore } from './profiles.ts'
 import type { Registry } from './registry.ts'
 
 const COOKIE = 'dr4w_home'
 const LINK_TTL_MS = 10 * 60_000
 const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1'])
+const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]'])
 
 export interface ServerDeps {
   registry: Registry
+  /** Saved controller layouts (controller-profiles.json next to the config). */
+  profiles: ProfileStore
   /** Secret the session cookie is derived from (state dir, mode 0600). */
   secret: Buffer
   /** The hub's address as the phone sees it, used in sign-in links. */
@@ -119,6 +129,72 @@ export function createApp(deps: ServerDeps) {
     if (c.req.method !== 'GET' && c.req.header('x-dr4w-client') !== '1')
       return c.json({ error: 'forbidden' }, 403)
     await next()
+  })
+
+  /**
+   * Browsers cannot add headers to a WebSocket, so the live controller socket checks Origin instead
+   * of x-dr4w-client: the hub's own address, or a loopback page served from the same host (dev).
+   */
+  const ownOrigin = new URL(baseUrl).origin
+  const sameOrigin = (c: Context) => {
+    const origin = c.req.header('origin')
+    if (!origin) return false
+    if (origin === ownOrigin) return true
+    try {
+      const u = new URL(origin)
+      return LOOPBACK_HOSTS.has(u.hostname) && u.host === c.req.header('host')
+    } catch {
+      return false
+    }
+  }
+  const sessions = new GamepadSessions()
+
+  app.get('/api/gamepad/:id', async (c, next) => {
+    if (!sameOrigin(c)) return c.json({ error: 'forbidden' }, 403)
+    if (c.req.header('upgrade')?.toLowerCase() !== 'websocket')
+      return c.json({ error: 'upgrade_required' }, 426)
+    const id = IdSchema.safeParse(c.req.param('id'))
+    const output = id.success ? registry.gamepad(id.data) : undefined
+    if (!id.success || !output) return c.json({ error: 'not_found' }, 404)
+    let session: GamepadSession | undefined
+    const upgrade = upgradeWebSocket(() => ({
+      onOpen: (_e, ws) => {
+        session = sessions.open(id.data, output, ws)
+        log('info', session ? 'gamepad session started' : 'gamepad session refused: busy', {
+          deviceId: id.data,
+        })
+      },
+      onMessage: (e) => session?.message(e.data),
+      onClose: () => {
+        if (session) log('info', 'gamepad session ended', { deviceId: id.data })
+        session?.close()
+      },
+      onError: () => session?.close(),
+    }))
+    return (await upgrade(c, next)) ?? c.json({ error: 'internal' }, 500)
+  })
+
+  app.get('/api/controller-profiles', (c) => c.json(deps.profiles.list()))
+
+  app.put('/api/controller-profiles/:id', async (c) => {
+    const body = ControllerProfileSchema.safeParse(await c.req.json().catch(() => null))
+    if (!body.success) return c.json({ error: 'invalid_request', issues: body.error.issues }, 400)
+    if (body.data.id !== c.req.param('id'))
+      return c.json(
+        {
+          error: 'invalid_request',
+          issues: [{ path: ['id'], message: 'The id in the path and the body differ' }],
+        },
+        400,
+      )
+    const r = deps.profiles.put(body.data)
+    return r === 'ok' ? c.json(body.data) : c.json({ error: r }, 409)
+  })
+
+  app.delete('/api/controller-profiles/:id', (c) => {
+    const r = deps.profiles.delete(c.req.param('id'))
+    if (r === 'not_found') return c.json({ error: 'not_found' }, 404)
+    return r === 'ok' ? c.json({ ok: true }) : c.json({ error: r }, 409)
   })
 
   app.get('/api/devices', (c) => c.json(registry.devices()))

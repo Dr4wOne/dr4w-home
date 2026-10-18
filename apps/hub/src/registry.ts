@@ -5,6 +5,7 @@ import {
   type CommandResult,
   type Device,
   type DeviceAdapter,
+  type GamepadOutput,
   runScene,
   type Scene,
 } from '@dr4w-home/device-sdk'
@@ -32,6 +33,15 @@ export class Registry {
     for (const adapter of this.adapters) {
       const device = adapter.devices().find((d) => d.id === id)
       if (device) return { adapter, device }
+    }
+    return undefined
+  }
+
+  /** The live controller output of a device, if it has one. */
+  gamepad(id: string): GamepadOutput | undefined {
+    for (const a of this.adapters) {
+      const o = a.gamepad?.(id)
+      if (o) return o
     }
     return undefined
   }

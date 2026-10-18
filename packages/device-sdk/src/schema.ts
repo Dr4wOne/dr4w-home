@@ -1,6 +1,7 @@
 // zod schemas for everything that crosses the hub's HTTP boundary. Types stay in index.ts; these
 // must accept exactly the same shapes (checked in schema.test.ts).
 import { z } from 'zod'
+import { type ControllerProfile, GAMEPAD_BUTTONS } from './gamepad.ts'
 import type { Command } from './index.ts'
 
 const id = z.string().regex(/^[a-z0-9][a-z0-9-]{0,62}$/)
@@ -45,3 +46,63 @@ export const CommandRequestSchema = z.strictObject({
   confirmed: z.boolean().optional(),
 })
 export const IdSchema = id
+
+// Live controller input and saved layouts (types and meaning: gamepad.ts).
+const axis = z.number().int().min(-100).max(100)
+export const GamepadFrameSchema = z.strictObject({
+  s: z.number().int().nonnegative(),
+  b: z
+    .number()
+    .int()
+    .min(0)
+    .max(2 ** GAMEPAD_BUTTONS.length - 1),
+  lx: axis,
+  ly: axis,
+  rx: axis,
+  ry: axis,
+})
+
+const unit = z.number().min(0).max(1)
+export const ControllerProfileSchema: z.ZodType<ControllerProfile> = z.strictObject({
+  id: z.string().regex(/^[a-z0-9][a-z0-9-]{0,62}$/),
+  name: z.string().min(1).max(60),
+  controls: z
+    .array(
+      z.strictObject({
+        id: z.string().min(1).max(40),
+        kind: z.enum(['button', 'dpad', 'stick', 'shoulder']),
+        binds: z.union([z.enum(GAMEPAD_BUTTONS), z.enum(['left', 'right', 'dpad'])]),
+        x: unit,
+        y: unit,
+        size: z.number().min(0.03).max(0.6),
+        opacity: z.number().min(0.1).max(1),
+        label: z.string().max(12).optional(),
+      }),
+    )
+    .max(40),
+  tilt: z
+    .strictObject({
+      stick: z.literal('left'),
+      axis: z.literal('x'),
+      maxDeg: z.number().min(10).max(90),
+    })
+    .optional(),
+  macros: z
+    .array(
+      z.strictObject({
+        id: z.string().min(1).max(40),
+        label: z.string().min(1).max(30),
+        steps: z
+          .array(
+            z.strictObject({
+              b: GamepadFrameSchema.shape.b,
+              ms: z.number().int().min(16).max(5000),
+            }),
+          )
+          .min(1)
+          .max(200),
+      }),
+    )
+    .max(20)
+    .optional(),
+})

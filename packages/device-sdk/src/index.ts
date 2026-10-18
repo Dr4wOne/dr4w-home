@@ -1,6 +1,11 @@
 // The adapter contract and the capability model. Design notes and the Matter / Home Assistant
 // mapping behind each type: docs/capability-model.md.
 
+import type { GamepadOutput, PadButton } from './gamepad.ts'
+
+export * from './gamepad.ts'
+export * from './presets.ts'
+
 /** Where a value came from: read back from the device, or set by us and not yet confirmed. */
 export type Source = 'reported' | 'assumed'
 export type Value<T> = { known: true; value: T; source: Source; at: number } | { known: false }
@@ -90,23 +95,7 @@ export type LightColorCap = Base<
   { ctMinK: number; ctMaxK: number },
   { kelvin: Value<number> }
 >
-export type GamepadButton =
-  | 'a'
-  | 'b'
-  | 'x'
-  | 'y'
-  | 'l'
-  | 'r'
-  | 'zl'
-  | 'zr'
-  | 'plus'
-  | 'minus'
-  | 'home'
-  | 'capture'
-  | 'dpadUp'
-  | 'dpadDown'
-  | 'dpadLeft'
-  | 'dpadRight'
+export type GamepadButton = PadButton
 export type GamepadCap = Base<
   'gamepad',
   { layout: 'switch-pro'; buttons: GamepadButton[] },
@@ -190,6 +179,8 @@ export interface DeviceAdapter {
   danger(device: Device, command: Command): Danger
   health(): Promise<{ ok: boolean; detail?: string }>
   discover?(): Promise<{ id: string; name: string; address: string }[]>
+  /** The live controller output of a device with a `gamepad` capability (GET /api/gamepad/:id). */
+  gamepad?(deviceId: string): GamepadOutput | undefined
   pair?(address: string, code: () => Promise<string>): Promise<void>
   close?(): Promise<void>
 }

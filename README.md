@@ -34,7 +34,8 @@ Then connect your own TV in about 30 minutes: [docs/quickstart.md](docs/quicksta
 | Device | Status |
 |---|---|
 | Android TV and Google TV | Works (verified on a Philips Android TV) |
-| Nintendo Switch, Switch 2 | Planned |
+| Nintendo Switch 2 | The phone as a controller, over Bluetooth; pair again after the console sleeps ([what works, what does not](docs/switch-2.md)) |
+| Nintendo Switch | Planned |
 
 Details: [docs/compatibility.md](docs/compatibility.md). No logos are used; product names only say what
 the kit works with. It is not affiliated with or endorsed by any device maker.

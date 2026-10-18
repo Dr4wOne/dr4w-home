@@ -3,6 +3,8 @@
 | Read | When |
 |---|---|
 | [quickstart.md](quickstart.md) | Trying the kit, or connecting your own TV |
+| [controller.md](controller.md) | Playing a console from your phone; making your own controller layout |
+| [switch-2.md](switch-2.md) | Playing a Nintendo Switch 2: setup, pairing again after sleep, limits, fixes |
 | [architecture.md](architecture.md) | Understanding how the parts fit |
 | [api.md](api.md) | Writing a client, or changing the hub |
 | [add-a-device.md](add-a-device.md) | Writing an adapter |

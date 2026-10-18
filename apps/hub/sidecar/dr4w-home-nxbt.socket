@@ -1,0 +1,19 @@
+# dr4w home: the socket for the root nxbt sidecar (dr4w-home-nxbt.service). systemd owns it, so the hub
+# starts the sidecar just by connecting while a phone plays, and the sidecar exits on its own when no hub
+# has been connected for 10 minutes, giving the computer's Bluetooth back. The hub gets no new rights:
+# it could always open this socket (group dr4w-home), and that is all it can do.
+# Install by hand (packages/adapter-nintendo-switch/README.md).
+[Unit]
+Description=dr4w home: Bluetooth controller sidecar socket
+
+[Socket]
+ListenStream=/run/dr4w-home/gamepad.sock
+SocketUser=root
+SocketGroup=dr4w-home
+SocketMode=0660
+# The directory only holds the socket; the socket's own mode keeps everyone but the group out.
+DirectoryMode=0755
+RemoveOnStop=yes
+
+[Install]
+WantedBy=sockets.target
