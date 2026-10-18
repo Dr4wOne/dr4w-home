@@ -165,6 +165,19 @@ describe('hub gamepad session', () => {
     expect(seen).toContain('busy')
   })
 
+  it('clears "refused" once input is acknowledged again, and passes on why the console waits', () => {
+    const { session } = setup()
+    const ws = last()
+    ws.open()
+    ws.say({ t: 'state', connected: false, output: 'bluetooth', waiting: 'starting' })
+    expect(session.status()).toMatchObject({ outputConnected: false, outputWaiting: 'starting' })
+    ws.say({ t: 'error', reason: 'invalid' })
+    expect(session.status().state).toBe('error')
+    ws.say({ t: 'ack', s: 1, ms: 1 })
+    expect(session.status()).toMatchObject({ state: 'connected', detail: undefined })
+    session.close()
+  })
+
   it('builds the socket address on the page origin', () => {
     expect(socketUrl('', '/api/gamepad/sw', 'https://hub.test/x')).toBe(
       'wss://hub.test/api/gamepad/sw',

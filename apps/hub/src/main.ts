@@ -11,6 +11,7 @@ import { serve } from '@hono/node-server'
 import { WebSocketServer } from 'ws'
 import { ADAPTERS, type AdapterTypeName } from './adapters.ts'
 import { configPath, loadConfig } from './config.ts'
+import { MAX_MESSAGE_BYTES } from './gamepad.ts'
 import { log } from './log.ts'
 import { ProfileStore } from './profiles.ts'
 import { Registry } from './registry.ts'
@@ -73,7 +74,7 @@ const app = createApp({
   webDir: fileURLToPath(new URL('../../web/dist/', import.meta.url)),
 })
 
-const websocket = { server: new WebSocketServer({ noServer: true }) }
+const websocket = { server: new WebSocketServer({ noServer: true, maxPayload: MAX_MESSAGE_BYTES }) }
 serve({ fetch: app.fetch, port: config.port, hostname: config.bind, websocket }, () =>
   log('info', 'hub listening', { url: baseUrl, devices: registry.devices().length, demo }),
 )

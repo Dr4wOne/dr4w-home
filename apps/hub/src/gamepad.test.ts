@@ -1,7 +1,7 @@
 import { DemoOutput } from '@dr4w-home/adapter-nintendo-switch'
 import { type GamepadWaiting, mask, NEUTRAL, WATCHDOG_MS } from '@dr4w-home/device-sdk'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { GamepadSessions, MAX_INVALID } from './gamepad.ts'
+import { GamepadSessions, MAX_INVALID, SILENT_MS } from './gamepad.ts'
 
 function fakeSocket() {
   const sent: Record<string, unknown>[] = []
@@ -70,6 +70,22 @@ describe('live controller session', () => {
     session?.close()
     session?.close()
     expect(calls).toEqual(['started', 'ended'])
+  })
+
+  it('ends a session whose phone went silent, and frees the device', async () => {
+    const calls: string[] = []
+    const out = Object.assign(new DemoOutput(), { sessionEnded: () => calls.push('ended') })
+    const sessions = new GamepadSessions()
+    const ws = fakeSocket()
+    const session = sessions.open('switch2', out, ws)
+    vi.advanceTimersByTime(SILENT_MS - 1)
+    session?.message(frame(1)) // any message resets the clock
+    vi.advanceTimersByTime(SILENT_MS - 1)
+    expect(ws.closed()).toBeUndefined()
+    vi.advanceTimersByTime(1)
+    expect(ws.closed()).toBe(1001)
+    expect(calls).toEqual(['ended'])
+    expect(sessions.open('switch2', out, fakeSocket())).toBeDefined() // not busy any more
   })
 
   it('ignores frames that are not newer than the last one', async () => {

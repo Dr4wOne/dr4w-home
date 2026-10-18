@@ -118,6 +118,8 @@ export function hubGamepad(url: string, deps: GamepadDeps = {}): GamepadSession 
       if (m?.t === 'ack' && typeof m.s === 'number') {
         const at = sentAt.get(m.s)
         if (at !== undefined) status.set({ latencyMs: Math.round(now() - at) })
+        // An ack means input arrives again: clear an earlier "refused" (one invalid frame).
+        if (status.get().state === 'error') status.set({ state: 'connected', detail: undefined })
         for (const k of sentAt.keys()) if (k <= m.s) sentAt.delete(k)
       } else if (m?.t === 'state')
         status.set({ output: m.output, outputConnected: m.connected, outputWaiting: m.waiting })

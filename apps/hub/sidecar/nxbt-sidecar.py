@@ -114,6 +114,7 @@ class Pad:
         self.nx = nx
         self.adapter_ok = adapter_ok
         self.failures = 0
+        self.broken_since = None  # when a crash (or a lost controller) was first seen
         self.lock = threading.Lock()
         self.address_file = address_file
         self.saved = read_addresses(address_file)
@@ -131,16 +132,23 @@ class Pad:
 
         When the Switch sleeps or refuses a reconnect, nxbt marks the controller crashed and stops; when
         it waits to be paired, it stops being discoverable after 180 s. Start a fresh controller after a
-        crash (RETRY_S after the last start, doubling for crashes in a row up to MAX_RETRY_S) or when the
-        pairing window is about to close. Never while the Bluetooth adapter is off or not answering.
+        crash (RETRY_S after the crash was seen and after the last start, doubling for crashes in a row
+        up to MAX_RETRY_S) or when the pairing window is about to close. Never while the Bluetooth adapter
+        is off or not answering.
         """
         state = self.state()
         if state == "connected":
             self.failures = 0
-            return
         broken = state in ("crashed", "unknown")
+        if not broken:
+            self.broken_since = None
+        elif self.broken_since is None:
+            self.broken_since = now
+        if state == "connected":
+            return
         wait = min(RETRY_S * 2**self.failures, MAX_RETRY_S) if broken else LISTEN_S
-        if now - self.created_at < wait:
+        since = max(self.created_at, self.broken_since) if broken else self.created_at
+        if now - since < wait:
             return
         if state == "crashed":
             errors = str(self.nx.state[self.index].get("errors") or "").strip().splitlines()
@@ -148,7 +156,7 @@ class Pad:
         if broken:
             self.failures += 1
         if not self.adapter_ok():
-            self.created_at = now  # try again after the next wait
+            self.created_at = self.broken_since = now  # try again after the next wait
             log("error", "Bluetooth adapter is not responding: reset it (sudo modprobe -r btusb && sudo modprobe btusb) or reboot")
             return
         with self.lock:
@@ -157,7 +165,7 @@ class Pad:
                     self.nx.remove_controller(self.index)
                 except ValueError:
                     pass  # a crashed controller may already be gone
-            self.index, self.created_at = None, now  # if create fails, the next tick tries again
+            self.index, self.created_at, self.broken_since = None, now, None  # if create fails, the next tick tries again
             self.index = self.create()
         log("info", "nxbt controller restarted", was=state, reconnect=bool(self.saved))
 
@@ -433,29 +441,34 @@ def self_test():
             return index
 
     pad.nx, pad.kind, pad.created_at, pad.saved = FakeLifecycle(), "pro", 95.0, ["switch"]
-    pad.failures, pad.adapter_ok = 0, lambda: True
-    pad.recover(100.0)  # crashed, but too soon after the last start
+    pad.failures, pad.adapter_ok, pad.broken_since = 0, lambda: True, None
+    pad.recover(100.0)  # the crash is seen now: wait RETRY_S from here
     assert pad.nx.created == []
-    pad.recover(105.0)  # crashed: a fresh controller that tries the saved Switch first
+    pad.recover(109.0)
+    assert pad.nx.created == []
+    pad.recover(110.0)  # crashed: a fresh controller that tries the saved Switch first
     assert pad.index == 1 and pad.nx.created == [["switch"]]
     pad.nx.state[1]["state"] = "connecting"  # waiting to be paired
-    pad.recover(105.0 + LISTEN_S - 1)
+    pad.recover(110.0 + LISTEN_S - 1)
     assert len(pad.nx.created) == 1
-    pad.recover(105.0 + LISTEN_S)  # the pairing window is closing: renew it
+    pad.recover(110.0 + LISTEN_S)  # the pairing window is closing: renew it
     assert pad.index == 2 and len(pad.nx.created) == 2
     pad.nx.state[2]["state"] = "connected"
     pad.recover(1000.0)
     assert len(pad.nx.created) == 2
-    pad.nx.state.pop(2)  # gone without a trace: "unknown" is recovered too
+    pad.nx.state.pop(2)  # gone without a trace: "unknown" is recovered too, RETRY_S after it was seen
     pad.recover(1000.0)
+    assert len(pad.nx.created) == 2
+    pad.recover(1010.0)
     assert pad.index == 3
     pad.nx.state[3]["state"] = "connected"
     pad.recover(2000.0)
     assert pad.failures == 0
     pad.nx.state[3]["state"] = "crashed"  # crashes in a row wait 10, 20, 40, 60, 60 s
-    t = pad.created_at = 2000.0
+    t = 2000.0
     for wait in (10, 20, 40, 60, 60):
         before = len(pad.nx.created)
+        pad.recover(t)  # the crash is seen
         pad.recover(t + wait - 1)
         assert len(pad.nx.created) == before, wait
         t += wait

@@ -64,6 +64,8 @@ export class BluetoothSidecarOutput implements GamepadOutput {
   #retry: ReturnType<typeof setTimeout> | undefined
   #status: ReturnType<typeof setInterval> | undefined
   #down = false
+  /** The sidecar answered on this socket. Until then (socket activation: it is still starting) frames wait. */
+  #ready = false
   /** Bumped by close(): events from a socket of an earlier connect() are ignored. */
   #gen = 0
   #sessions = 0
@@ -91,7 +93,11 @@ export class BluetoothSidecarOutput implements GamepadOutput {
     if (!this.#closed) return
     this.#closed = false
     this.#dial()
-    this.#status = setInterval(() => this.#write('{"op":"status"}\n'), this.#o.statusMs)
+    // One status request at a time while the sidecar starts: they would only pile up in the socket.
+    this.#status = setInterval(
+      () => this.#ready && this.#write('{"op":"status"}\n'),
+      this.#o.statusMs,
+    )
     this.#status.unref?.()
   }
 
@@ -104,6 +110,7 @@ export class BluetoothSidecarOutput implements GamepadOutput {
     sock.on('connect', () => {
       if (gen !== this.#gen) return void sock.end() // closed while dialing
       this.#down = false
+      this.#ready = false
       this.#sock = sock
       this.#backoff = this.#o.minBackoffMs
       this.#o.log?.('info', 'gamepad sidecar connected', { path: this.#o.path })
@@ -138,7 +145,13 @@ export class BluetoothSidecarOutput implements GamepadOutput {
   #line(line: string) {
     try {
       const m = JSON.parse(line) as { connected?: unknown; error?: unknown }
-      if (typeof m.connected === 'boolean') this.#switch = m.connected
+      if (typeof m.connected === 'boolean') {
+        this.#switch = m.connected
+        if (!this.#ready) {
+          this.#ready = true
+          this.#flush()
+        }
+      }
       if (m.error) this.#o.log?.('error', 'gamepad sidecar refused a message', { error: m.error })
     } catch {
       this.#o.log?.('error', 'gamepad sidecar sent invalid JSON')
@@ -151,7 +164,7 @@ export class BluetoothSidecarOutput implements GamepadOutput {
 
   #flush() {
     const p = this.#pending
-    if (!p || !this.#sock || this.#sock.writableNeedDrain) return
+    if (!p || !this.#sock || !this.#ready || this.#sock.writableNeedDrain) return
     this.#pending = undefined
     this.#sock.write(p)
   }
@@ -164,7 +177,7 @@ export class BluetoothSidecarOutput implements GamepadOutput {
 
   /** No socket: the sidecar service is not running. A socket but no Switch: pair on the console. */
   waiting(): GamepadWaiting | undefined {
-    if (this.#sock) return this.#switch ? undefined : 'pair'
+    if (this.#sock) return !this.#ready ? 'starting' : this.#switch ? undefined : 'pair'
     return this.#down ? 'down' : undefined // undefined: still dialing
   }
 

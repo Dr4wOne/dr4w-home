@@ -35,6 +35,8 @@ function statusText(s: GamepadStatus): { text: string; tone: 'ok' | 'wait' | 'ba
   if (s.state === 'closed') return { text: 'Paused', tone: 'wait' }
   if (s.state === 'connecting') return { text: 'Connecting…', tone: 'wait' }
   if (s.outputConnected === false) {
+    if (s.outputWaiting === 'starting')
+      return { text: 'Starting the controller service on the hub…', tone: 'wait' }
     if (s.outputWaiting === 'down')
       return { text: 'The controller service is not running on the hub', tone: 'bad' }
     if (s.outputWaiting === 'pair' && s.output === 'bluetooth')

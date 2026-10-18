@@ -28,7 +28,8 @@ What to expect:
   connects by itself when the other phone stops.
 - **Safety.** If the app goes to the background, the screen locks, or the connection drops, the phone
   releases everything, and the hub releases every button by itself if it hears nothing for a tenth of a
-  second. A button can never stay stuck down.
+  second. A button can never stay stuck down. A phone that went silent for 5 seconds (it left the Wi-Fi
+  without saying goodbye) loses the controller, so the next phone can take it at once.
 - **The screen stays on** while you play, where the browser allows it, and the app asks for full screen
   where it can (on an iPhone, add the app to the Home Screen for full screen).
 - **Keyboard.** The arrow keys work as the D-pad; A, B, X, Y, L and R press those buttons; Enter is Plus.

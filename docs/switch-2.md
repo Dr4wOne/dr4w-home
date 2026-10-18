@@ -14,7 +14,7 @@ Tested on one setup: a Switch 2 on system 23.0.1, docked to an Android TV, and a
 - **The one thing to know:** each time the console sleeps or restarts, or the hub's controller service
   restarts, pair again: on the console open **Controllers → Change Grip/Order** for a few seconds.
   The Switch 2 does not let the emulated controller reconnect by itself.
-- **The cost:** while you play, and for 10 minutes after, the hub computer cannot use any other
+- **The cost:** while you play, and for about 10½ minutes after, the hub computer cannot use any other
   Bluetooth device (headphones, keyboards, mice). The controller service starts when you tap Play and
   stops by itself; you never need a command to play.
 
@@ -30,8 +30,9 @@ You need:
 
 ## Play
 1. On the phone, open the Switch 2 in the app, pick a layout under **Controller** and tap
-   **Play with …**. The hub starts the controller service (a second or two); from now on other
-   Bluetooth devices on the hub computer stop working (see [Limits](#limits)).
+   **Play with …**. The hub starts the controller service; the status line says **Starting the
+   controller service on the hub…** for a second or two, up to about 15 seconds right after the service
+   stopped. From now on other Bluetooth devices on the hub computer stop working (see [Limits](#limits)).
 2. The status line at the top says **Not paired: on the Switch, open Controllers → Change Grip/Order**.
    Do that on the console: within a few seconds a Pro Controller appears. Leave the screen (press A on
    the phone, or use a Joy-Con).
@@ -62,7 +63,7 @@ you play again after it stopped itself, pair once more.
 |---|---|---|
 | Pair again after every sleep or restart, and when you play after the service stopped itself | The Switch 2 refuses the emulated controller's reconnect (`Connection reset by peer` in the log) | Change Grip/Order, a few seconds; the phone tells you when. The planned USB bridge will not have this limit |
 | The phone cannot wake the console | A real controller wakes it by reconnecting, which the Switch 2 refuses here | Turn the TV on (in the app, or with the TV remote): Match TV Power State wakes the console with it |
-| No other Bluetooth on the hub computer while you play and for 10 minutes after | The emulation restarts the computer's Bluetooth with everything else switched off; a second Bluetooth adapter does not help | Wait, or close the controller, wait 30 s and `sudo systemctl stop dr4w-home-nxbt` |
+| No other Bluetooth on the hub computer while you play and for about 10½ minutes after | The emulation restarts the computer's Bluetooth with everything else switched off; a second Bluetooth adapter does not help | Wait, or close the controller, wait 30 s and `sudo systemctl stop dr4w-home-nxbt` |
 | The first **Play** after a stop takes up to about 15 seconds | Each start and stop restarts the computer's Bluetooth service; the service waits 10 s between two restarts, because restarting it twice in a row can hang some Bluetooth chips | Wait for the pairing hint; it comes once the service is ready |
 | One player | The hub emulates one controller | A second phone waits ("Another phone is using this controller") and connects when the first one stops |
 | A Switch 1 Pro Controller, not a Switch 2 one | That is what the emulation (nxbt) offers | No C button (GameChat), no motion controls sent to the console, no rumble, no amiibo (NFC). Tilt steering moves the left stick, so it works where a stick steers |
@@ -84,7 +85,7 @@ Look at the service first: `journalctl -u dr4w-home-nxbt -f` (one line per event
 | The phone says **Connected · Bluetooth**, the console does nothing | The console is on a screen that ignores this controller, or another controller is player 1 | Press Home on the phone; on Change Grip/Order, check the order of the controllers |
 | The log shows `nxbt controller crashed` | Normal after the console sleeps; the service starts a fresh controller by itself 10 s later | Change Grip/Order on the console |
 | The log shows `Bluetooth adapter is not responding`, or pairing never works and `bluetoothctl show` says `Powered: no` | The computer's Bluetooth chip hung (the kernel log shows `hci0: Opcode … failed: -110`) | `sudo systemctl stop dr4w-home-nxbt && sudo modprobe -r btusb && sleep 2 && sudo modprobe btusb`, then **Play** again. If `Powered` stays `no`, reboot |
-| Headphones on the hub computer went silent | The service is running (it stops 10 minutes after the last phone) | Wait, or stop it now: `sudo systemctl stop dr4w-home-nxbt` |
+| Headphones on the hub computer went silent | The service is running (it stops about 10½ minutes after the last phone) | Wait, or stop it now: `sudo systemctl stop dr4w-home-nxbt` |
 | A button stayed pressed on the console | Should never happen: the hub releases everything after 0.1 s without news from the phone | Please open an issue with the time and the log lines from both services |
 
 ## Coming

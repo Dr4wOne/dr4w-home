@@ -14,8 +14,9 @@ afterEach(async () => {
 process.on('exit', () => rmSync(dir, { recursive: true, force: true }))
 
 /** A fake sidecar: records every line, answers status with `connected`. */
-function fakeSidecar(path: string, connected = true) {
+function fakeSidecar(path: string, connected = true, answering = { now: true }) {
   const lines: unknown[] = []
+  const held: Socket[] = [] // status requests not answered yet, as a still-starting sidecar leaves them
   const socks: Socket[] = []
   const server: Server = createServer((s) => {
     socks.push(s)
@@ -26,8 +27,10 @@ function fakeSidecar(path: string, connected = true) {
       for (let i = buf.indexOf('\n'); i >= 0; i = buf.indexOf('\n')) {
         const m = JSON.parse(buf.slice(0, i)) as { op: string }
         buf = buf.slice(i + 1)
-        if (m.op === 'status') s.write(`${JSON.stringify({ connected, state: 'connected' })}\n`)
-        else lines.push(m)
+        if (m.op === 'status') {
+          if (answering.now) s.write(`${JSON.stringify({ connected, state: 'connected' })}\n`)
+          else held.push(s)
+        } else lines.push(m)
       }
     })
   })
@@ -36,7 +39,13 @@ function fakeSidecar(path: string, connected = true) {
     for (const s of socks) s.destroy()
     return new Promise<void>((r) => server.close(() => r()))
   }
-  return { lines, listening, stop }
+  /** The sidecar is up: answer what waited, and everything from now on. */
+  const answer = () => {
+    answering.now = true
+    for (const s of held.splice(0))
+      s.write(`${JSON.stringify({ connected, state: 'connected' })}\n`)
+  }
+  return { lines, listening, stop, answer }
 }
 
 const until = async (ok: () => boolean, ms = 2000) => {
@@ -123,4 +132,24 @@ it('connects only while a phone plays, and lets go after lingerMs', async () => 
   expect(out.waiting()).toBeUndefined() // let go on purpose: not "down"
   out.sessionStarted()
   await until(() => out.connected())
+})
+
+it('says "starting" and holds frames back until the sidecar first answers', async () => {
+  const path = join(dir, `s${n++}.sock`)
+  const answering = { now: false } // socket activation: systemd accepted, the sidecar is starting
+  const fake = fakeSidecar(path, true, answering)
+  cleanup.push(fake.stop)
+  await fake.listening
+  const out = new BluetoothSidecarOutput({ path, minBackoffMs: 10, statusMs: 20 })
+  cleanup.push(() => out.close())
+  out.sessionStarted()
+  await until(() => out.waiting() === 'starting')
+  out.send(frame(1))
+  out.send(frame(2))
+  await new Promise((r) => setTimeout(r, 60))
+  expect(fake.lines).toEqual([])
+  fake.answer()
+  await until(() => out.connected())
+  await until(() => fake.lines.length > 0)
+  expect(fake.lines).toEqual([{ op: 'frame', ...frame(2) }])
 })

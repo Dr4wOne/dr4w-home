@@ -64,9 +64,10 @@ export interface GamepadOutput {
 
 /**
  * Why an output does not reach the console: `pair` means the console has to pair with it (on a
- * Switch: Change Grip/Order); `down` means the hub cannot reach what drives it (the sidecar service).
+ * Switch: Change Grip/Order); `starting` means what drives it is starting up and has not answered yet;
+ * `down` means the hub cannot reach what drives it (the sidecar service).
  */
-export type GamepadWaiting = 'pair' | 'down'
+export type GamepadWaiting = 'pair' | 'starting' | 'down'
 
 /** Hub to phone, on the same socket. `ms` is hub receive to output write for frame `s`. */
 export type GamepadServerMessage =

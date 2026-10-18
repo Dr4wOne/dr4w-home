@@ -13,6 +13,13 @@ import { GamepadFrameSchema } from '@dr4w-home/device-sdk/schema'
 /** 250 frames per second at most; a faster frame waits for the gap and is replaced by newer ones. */
 export const MIN_GAP_MS = 4
 export const MAX_INVALID = 20
+/**
+ * A phone sends at least every HEARTBEAT_MS; silent this long, it is gone (left Wi-Fi without closing
+ * the socket). End the session so the device is free again and an on-demand output can let go.
+ */
+export const SILENT_MS = 5000
+/** A frame is about 50 bytes; the WebSocket server refuses anything larger than this. */
+export const MAX_MESSAGE_BYTES = 1024
 const STATE_POLL_MS = 500
 
 export type Socket = { send(data: string): void; close(code?: number, reason?: string): void }
@@ -44,6 +51,7 @@ export class GamepadSession {
   #pending: { frame: GamepadFrame; t0: number } | undefined
   #gap: ReturnType<typeof setTimeout> | undefined
   #watchdog: ReturnType<typeof setTimeout> | undefined
+  #silent: ReturnType<typeof setTimeout> | undefined
   #poll: ReturnType<typeof setInterval>
   #connected: boolean
   #waiting: GamepadWaiting | undefined
@@ -53,6 +61,7 @@ export class GamepadSession {
     this.#ws = ws
     this.#done = done
     output.sessionStarted?.()
+    this.#heard()
     this.#connected = output.connected()
     this.#waiting = this.#why(this.#connected)
     this.#state()
@@ -82,8 +91,17 @@ export class GamepadSession {
     })
   }
 
+  #heard() {
+    clearTimeout(this.#silent)
+    this.#silent = setTimeout(() => {
+      this.#ws.close(1001, 'silent')
+      this.close()
+    }, SILENT_MS)
+  }
+
   message(data: unknown) {
     if (!this.#done) return
+    this.#heard()
     const t0 = performance.now()
     let json: unknown
     try {
@@ -134,6 +152,7 @@ export class GamepadSession {
   close() {
     if (!this.#done) return
     clearTimeout(this.#watchdog)
+    clearTimeout(this.#silent)
     clearInterval(this.#poll)
     this.#release()
     this.#out.sessionEnded?.()

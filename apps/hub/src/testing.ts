@@ -9,6 +9,7 @@ import { NintendoSwitchAdapter } from '@dr4w-home/adapter-nintendo-switch'
 import type { GamepadOutput } from '@dr4w-home/device-sdk'
 import { serve } from '@hono/node-server'
 import { WebSocketServer } from 'ws'
+import { MAX_MESSAGE_BYTES } from './gamepad.ts'
 import { ProfileStore } from './profiles.ts'
 import { Registry } from './registry.ts'
 import { adminProof, createApp } from './server.ts'
@@ -41,7 +42,7 @@ export async function startTestHub(output: GamepadOutput) {
     fetch: (req, env) => (app as ReturnType<typeof createApp>).fetch(req, env),
     port: 0,
     hostname: '127.0.0.1',
-    websocket: { server: new WebSocketServer({ noServer: true }) },
+    websocket: { server: new WebSocketServer({ noServer: true, maxPayload: MAX_MESSAGE_BYTES }) },
   })
   await new Promise((r) => server.once('listening', r))
   const baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
