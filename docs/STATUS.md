@@ -1,14 +1,17 @@
 # Status
 
-**As of:** 2026-10-17 · Part A done and approved (public repository, live showcase). Part B: the Switch 2
-works from the phone over Bluetooth; G5 results below wait for the owner's review
+**As of:** 2026-10-17 · Part A done and approved (public repository, live showcase). Part B (Switch 2)
+released in #3 and **paused** by the owner; next project: the Daikin air conditioner
 
-## In progress
-- Part B, Switch 2 (branch `build/switch2`, pushed, not merged): live controller WebSocket
-  `/api/gamepad/:id` with a 100 ms watchdog, demo and Bluetooth outputs, `adapter-nintendo-switch`,
-  controller profiles API with 4 presets, the phone's player and builder, the showcase's virtual
-  screen. The Bluetooth output is a root nxbt sidecar, socket-activated: it starts when a phone plays
-  and stops 10 minutes after the last one. Guides: `docs/controller.md`, `docs/switch-2.md`.
+## Paused: Switch 2
+- Shipped in #3: live controller WebSocket `/api/gamepad/:id` with a 100 ms watchdog and a 5 s silent
+  timeout, demo and Bluetooth outputs, `adapter-nintendo-switch`, controller profiles with 4 presets,
+  the phone's player and builder, the showcase's virtual screen. The Bluetooth output is a root nxbt
+  sidecar, socket-activated: it starts when a phone plays and stops 10 minutes after the last one.
+  Guides: `docs/controller.md`, `docs/switch-2.md` (also: how to pause and resume it on the hub).
+- **To pick it up again:** branch from `main`, read `docs/switch-2.md`, this file's G5 table and
+  `packages/adapter-nintendo-switch/docs/discovery.md`. Next steps, in order: the wired Pico bridge
+  (parts ordered; needs Pro Controller Wired Communication on, owner's go), then Switch 1 discovery.
 
 ### G5: Switch 2 results (2026-10-17, system 23.0.1, hub on Ubuntu 22.04, BlueZ 5.64)
 | Check | Result | Evidence |
@@ -21,7 +24,7 @@ works from the phone over Bluetooth; G5 results below wait for the owner's revie
 | Start on Play, stop when idle | Pass: started by the hub's connection; stopped 10 min after the hub let go (30 s after the phone), in 0.6 s, and BlueZ came back with its plugins, adapter on, no chip errors | Sidecar, hub and kernel logs |
 | Real iPhone: multi-touch, tilt sign and motion permission, click sound, Home Screen full screen | Pass | Owner, on the console |
 
-Open before G6: a branch review.
+Branch review done (all findings fixed); released in #3.
 
 ## Done
 - Packages: `device-sdk` (capabilities incl. `mode`, schemas), `adapter-android-tv` (protocol, supervised
@@ -35,10 +38,8 @@ Open before G6: a branch review.
 - Showcase live: Lighthouse mobile 98 / 100 / 93 / 100, LCP 1.8 s, CLS 0.
 
 ## Next up
-1. G5 review by the owner, then G6: PR from `build/switch2` to `main` (deploys the showcase; owner's go).
-2. Wired bridge (Raspberry Pi Pico on the dock's USB) when the parts arrive: no pairing after sleep, the
-   computer's Bluetooth left alone.
-3. Nintendo Switch (1) discovery.
+1. Daikin air conditioner: `adapter-daikin`, a simulated AC in the showcase, the owner's unit in the hub.
+2. Switch 2 (paused): the wired Pico bridge, then Switch 1 discovery.
 
 ## Known issues
 - Switch 2 refuses nxbt's reconnect after it sleeps (`Connection reset by peer`, system 23.0.1): pair
