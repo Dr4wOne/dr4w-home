@@ -100,3 +100,27 @@ it('is not connected while the sidecar has no Switch', async () => {
   expect(out.connected()).toBe(false)
   expect(out.waiting()).toBe('pair') // the console has to pair on Change Grip/Order
 })
+
+it('connects only while a phone plays, and lets go after lingerMs', async () => {
+  const path = join(dir, `s${n++}.sock`)
+  const fake = fakeSidecar(path)
+  cleanup.push(fake.stop)
+  await fake.listening
+  const out = new BluetoothSidecarOutput({ path, minBackoffMs: 10, statusMs: 20, lingerMs: 40 })
+  cleanup.push(() => out.close())
+  await new Promise((r) => setTimeout(r, 30))
+  expect(out.connected()).toBe(false) // nobody plays: the sidecar is not even dialed
+  out.sessionStarted()
+  await until(() => out.connected())
+  out.sessionStarted() // a second phone, then both leave
+  out.sessionEnded()
+  out.sessionEnded()
+  out.sessionStarted() // a quick reopen within lingerMs keeps the connection
+  await new Promise((r) => setTimeout(r, 60))
+  expect(out.connected()).toBe(true)
+  out.sessionEnded()
+  await until(() => !out.connected())
+  expect(out.waiting()).toBeUndefined() // let go on purpose: not "down"
+  out.sessionStarted()
+  await until(() => out.connected())
+})

@@ -68,12 +68,18 @@ sudo /opt/dr4w-home/nxbt-venv/bin/pip install blessed psutil pynput cryptography
 sudo install -m 0755 -o root -g root apps/hub/sidecar/nxbt-sidecar.py /opt/dr4w-home/nxbt-sidecar.py
 sudo /opt/dr4w-home/nxbt-venv/bin/python -I /opt/dr4w-home/nxbt-sidecar.py --self-test
 
-# 3. The system service.
-sudo install -m 0644 -o root -g root apps/hub/sidecar/dr4w-home-nxbt.service /etc/systemd/system/
+# 3. The system service and its socket. The socket starts the service when the hub connects (only
+#    while a phone plays); the service stops itself 10 minutes after the last hub connection.
+sudo install -m 0644 -o root -g root apps/hub/sidecar/dr4w-home-nxbt.service apps/hub/sidecar/dr4w-home-nxbt.socket /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl start dr4w-home-nxbt   # on demand; `enable --now` to start it at every boot
+sudo systemctl enable --now dr4w-home-nxbt.socket
 journalctl -u dr4w-home-nxbt -f
 ```
+
+Updating an install: copy the changed files the same way (step 2 for the sidecar, step 3 for the units),
+then `sudo systemctl daemon-reload` and `sudo systemctl restart dr4w-home-nxbt.socket`. To keep the
+service running all the time instead, `sudo systemctl start dr4w-home-nxbt` by hand: a service started by
+hand never stops itself.
 
 Pairing: on the console open **Controllers → Change Grip/Order** while the service runs. **On a
 Switch 2, do this again after every sleep or restart** (of the console or of the service): the console
@@ -87,9 +93,11 @@ Switch 1 may accept it; the Switch 2 does not) and then waits, discoverable, to 
 discoverable window is 180 s, so the sidecar renews it every 170 s while nothing is paired.
 
 While the service runs, nxbt has started BlueZ with all its plugins off (`--noplugin=*`), so other
-Bluetooth keyboards, mice, game controllers and headphones on this machine stop working. Stopping the service (`sudo systemctl stop
-dr4w-home-nxbt`) gives BlueZ its plugins back. To remove it: `sudo systemctl disable --now
-dr4w-home-nxbt`, then delete `/etc/systemd/system/dr4w-home-nxbt.service` and `/opt/dr4w-home`.
+Bluetooth keyboards, mice, game controllers and headphones on this machine stop working. When the
+service stops (by itself, or `sudo systemctl stop dr4w-home-nxbt`) BlueZ gets its plugins back. To
+remove it: `sudo systemctl disable --now dr4w-home-nxbt.socket dr4w-home-nxbt`, then delete
+`/etc/systemd/system/dr4w-home-nxbt.service`, `/etc/systemd/system/dr4w-home-nxbt.socket` and
+`/opt/dr4w-home`.
 
 ## Checking latency
 `pnpm --filter @dr4w-home/hub latency` sends 1000 frames at 60 Hz over a real local WebSocket to the

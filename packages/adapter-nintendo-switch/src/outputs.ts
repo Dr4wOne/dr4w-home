@@ -43,11 +43,15 @@ export type SidecarOptions = {
   statusMs?: number
   minBackoffMs?: number
   maxBackoffMs?: number
+  /** How long to stay connected after the last phone stops, so a quick reopen does not restart anything. */
+  lingerMs?: number
 }
 
 /**
  * Talks newline-delimited JSON to the sidecar. Only the newest unsent frame is kept, so a slow
  * socket never queues stale input; `connected()` is true only while the sidecar says the Switch is.
+ * Connected only while a phone plays (plus `lingerMs`): with dr4w-home-nxbt.socket installed, connecting
+ * starts the sidecar, and the sidecar stops itself once no hub is connected.
  */
 export class BluetoothSidecarOutput implements GamepadOutput {
   readonly kind = 'bluetooth'
@@ -59,10 +63,27 @@ export class BluetoothSidecarOutput implements GamepadOutput {
   #backoff: number
   #retry: ReturnType<typeof setTimeout> | undefined
   #status: ReturnType<typeof setInterval> | undefined
+  #down = false
+  /** Bumped by close(): events from a socket of an earlier connect() are ignored. */
+  #gen = 0
+  #sessions = 0
+  #linger: ReturnType<typeof setTimeout> | undefined
 
   constructor(opts: SidecarOptions) {
-    this.#o = { statusMs: 1000, minBackoffMs: 250, maxBackoffMs: 5000, ...opts }
+    this.#o = { statusMs: 1000, minBackoffMs: 250, maxBackoffMs: 5000, lingerMs: 30_000, ...opts }
     this.#backoff = this.#o.minBackoffMs
+  }
+
+  sessionStarted() {
+    this.#sessions++
+    clearTimeout(this.#linger)
+    void this.connect()
+  }
+
+  sessionEnded() {
+    if (--this.#sessions > 0) return
+    this.#linger = setTimeout(() => void this.close(), this.#o.lingerMs)
+    this.#linger.unref?.()
   }
 
   /** Starts connecting in the background and keeps reconnecting with backoff until close(). */
@@ -75,11 +96,14 @@ export class BluetoothSidecarOutput implements GamepadOutput {
   }
 
   #dial() {
+    const gen = this.#gen
     const sock = createConnection(this.#o.path)
     sock.setEncoding('utf8')
     sock.setNoDelay?.(true)
     let buf = ''
     sock.on('connect', () => {
+      if (gen !== this.#gen) return void sock.end() // closed while dialing
+      this.#down = false
       this.#sock = sock
       this.#backoff = this.#o.minBackoffMs
       this.#o.log?.('info', 'gamepad sidecar connected', { path: this.#o.path })
@@ -87,6 +111,7 @@ export class BluetoothSidecarOutput implements GamepadOutput {
       this.#flush()
     })
     sock.on('data', (chunk: string) => {
+      if (gen !== this.#gen) return
       buf += chunk
       for (let i = buf.indexOf('\n'); i >= 0; i = buf.indexOf('\n')) {
         this.#line(buf.slice(0, i))
@@ -96,6 +121,7 @@ export class BluetoothSidecarOutput implements GamepadOutput {
     sock.on('drain', () => this.#flush())
     sock.on('error', () => {}) // 'close' follows and schedules the retry
     sock.on('close', () => {
+      if (gen !== this.#gen) return // a socket close() already let go of
       const was = this.#sock === sock
       if (was) {
         this.#sock = undefined
@@ -103,7 +129,7 @@ export class BluetoothSidecarOutput implements GamepadOutput {
         this.#o.log?.('error', 'gamepad sidecar disconnected', { path: this.#o.path })
       }
       this.#switch = false
-      if (this.#closed) return
+      this.#down = true
       this.#retry = setTimeout(() => this.#dial(), this.#backoff)
       this.#backoff = Math.min(this.#backoff * 2, this.#o.maxBackoffMs)
     })
@@ -138,8 +164,8 @@ export class BluetoothSidecarOutput implements GamepadOutput {
 
   /** No socket: the sidecar service is not running. A socket but no Switch: pair on the console. */
   waiting(): GamepadWaiting | undefined {
-    if (!this.#sock) return 'down'
-    return this.#switch ? undefined : 'pair'
+    if (this.#sock) return this.#switch ? undefined : 'pair'
+    return this.#down ? 'down' : undefined // undefined: still dialing
   }
 
   release() {
@@ -149,10 +175,16 @@ export class BluetoothSidecarOutput implements GamepadOutput {
 
   async close() {
     this.#closed = true
+    this.#down = false
     clearTimeout(this.#retry)
+    clearTimeout(this.#linger)
     clearInterval(this.#status)
+    this.#gen++
     const sock = this.#sock
+    this.#sock = undefined
+    this.#switch = false
     if (!sock) return
+    this.#o.log?.('info', 'gamepad sidecar released', { path: this.#o.path })
     sock.write('{"op":"release"}\n')
     await new Promise<void>((r) => sock.end(r))
   }

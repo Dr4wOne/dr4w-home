@@ -54,6 +54,12 @@ export interface GamepadOutput {
   connected(): boolean
   /** Optional: why `connected()` is false, so the phone can say what to do. */
   waiting?(): GamepadWaiting | undefined
+  /**
+   * Optional: the hub calls these when a phone starts and stops playing, so an output can reach the
+   * console only while someone plays. An output with them connects itself; the hub skips `connect()`.
+   */
+  sessionStarted?(): void
+  sessionEnded?(): void
 }
 
 /**

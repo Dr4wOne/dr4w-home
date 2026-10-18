@@ -36,10 +36,14 @@ hand ([adapter README](../packages/adapter-nintendo-switch/README.md)).
 - **What it can do:** press controller buttons and move sticks on the paired Switch, and nothing else.
   It accepts three messages (`frame`, `release`, `status`) with exactly the expected fields and ranges;
   anything else is refused. It has no network listener and runs no commands it receives.
-- **Who can talk to it:** its Unix socket `/run/dr4w-home/gamepad.sock` is mode 0660, owned by root and
-  the `dr4w-home` group, in a directory of that group (0750). Only root and members of that group (the
-  hub's user) can connect. Any process of the hub's user can therefore send controller input, which is
-  no more than the hub itself can do.
+- **Who can talk to it:** its Unix socket `/run/dr4w-home/gamepad.sock` is made by systemd
+  (`dr4w-home-nxbt.socket`), mode 0660, owned by root and the `dr4w-home` group. Only root and members
+  of that group (the hub's user) can connect. Any process of the hub's user can therefore send
+  controller input, which is no more than the hub itself can do.
+- **Starting it:** connecting to the socket starts the service (socket activation), and the service
+  stops itself after 10 minutes without a connection. So the hub's user can start and stop it by
+  connecting, and nothing more: the hub gets no `sudo`, polkit or systemd rights (its own unit keeps
+  `NoNewPrivileges`).
 - **What it changes on the machine:** while it runs, BlueZ runs with all plugins off (`--noplugin=*`),
   so other Bluetooth keyboards, mice, controllers and headphones on the hub machine do not work. On exit it puts BlueZ back.
 - **What it stores:** the paired Switch's Bluetooth address, in `/var/lib/dr4w-home-nxbt/` (root only, 0600).

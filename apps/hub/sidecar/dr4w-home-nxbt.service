@@ -8,19 +8,20 @@ Description=dr4w home: Bluetooth controller sidecar (nxbt)
 # systemd stop and restart the sidecar along with it.
 After=bluetooth.service
 Wants=bluetooth.service
+# Started by its socket when the hub connects (dr4w-home-nxbt.socket); it stops itself when idle.
+Requires=dr4w-home-nxbt.socket
+After=dr4w-home-nxbt.socket
 
 [Service]
 Type=simple
 ExecStart=/opt/dr4w-home/nxbt-venv/bin/python -I /opt/dr4w-home/nxbt-sidecar.py --socket /run/dr4w-home/gamepad.sock --group dr4w-home
-# Root (nxbt needs it), with the hub's group so /run/dr4w-home and the socket belong to that group.
+# Root (nxbt needs it), with the hub's group for a manual run, when the sidecar makes the socket itself.
 Group=dr4w-home
 Restart=on-failure
 RestartSec=5
 # nxbt's worker processes can leave the main process hanging on SIGTERM; don't wait 90 s for it.
 TimeoutStopSec=5
-# /run/dr4w-home (the socket) and /var/lib/dr4w-home-nxbt (the Switch's address, root only).
-RuntimeDirectory=dr4w-home
-RuntimeDirectoryMode=0750
+# /var/lib/dr4w-home-nxbt: the Switch's address, root only. The socket unit owns /run/dr4w-home.
 StateDirectory=dr4w-home-nxbt
 StateDirectoryMode=0700
 UMask=0077

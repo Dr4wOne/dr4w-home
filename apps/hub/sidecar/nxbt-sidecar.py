@@ -10,7 +10,9 @@ newline-delimited JSON and refuses everything else.
     {"op": "status"}   ->  {"connected": true|false, "state": "<nxbt state>"}
 
 All input is released when a client disconnects. The Switch's address is kept after the first
-pairing in a root-only file, so later starts reconnect instead of waiting on Change Grip/Order.
+pairing in a root-only file, so later starts try to reconnect (a Switch 2 refuses; pair again).
+Started by dr4w-home-nxbt.socket, it uses the socket systemd hands over and exits after IDLE_S without
+a client; started by hand, it makes the socket itself and runs until stopped.
 Self-check without nxbt or Bluetooth: python3 nxbt-sidecar.py --self-test
 """
 
@@ -19,6 +21,7 @@ import grp
 import json
 import os
 import signal
+import socket
 import socketserver
 import subprocess
 import sys
@@ -40,6 +43,7 @@ NXBT_KEYS = {
 AXES = ("lx", "ly", "rx", "ry")
 MAX_LINE = 512
 RETRY_S = 10  # after a crash, wait this long before starting a new controller (BlueZ needs the pause)
+IDLE_S = 600  # started by dr4w-home-nxbt.socket: exit after this long with no hub connected
 LISTEN_S = 170  # nxbt is discoverable for 180 s; renew before that runs out, and retry the known Switch
 BLUEZ_OVERRIDE = "/run/systemd/system/bluetooth.service.d/nxbt.conf"  # written by nxbt on start
 
@@ -76,6 +80,29 @@ def to_packet(m, packet):
     packet["R_STICK"]["X_VALUE"] = clamp(m["rx"])
     packet["R_STICK"]["Y_VALUE"] = clamp(m["ry"])
     return packet
+
+
+class Clients:
+    """How many hub connections are open, and since when there are none."""
+
+    def __init__(self, now):
+        self.lock = threading.Lock()
+        self.count = 0
+        self.alone_since = now
+
+    def joined(self):
+        with self.lock:
+            self.count += 1
+
+    def left(self, now):
+        with self.lock:
+            self.count -= 1
+            if self.count == 0:
+                self.alone_since = now
+
+    def idle(self, now, after):
+        with self.lock:
+            return self.count == 0 and now - self.alone_since >= after
 
 
 class Pad:
@@ -192,9 +219,10 @@ def handle(pad, line):
     return {"error": "invalid"}
 
 
-def make_handler(pad):
+def make_handler(pad, clients):
     class Handler(socketserver.StreamRequestHandler):
         def handle(self):
+            clients.joined()
             try:
                 while True:
                     line = self.rfile.readline(MAX_LINE + 1)
@@ -210,6 +238,7 @@ def make_handler(pad):
                 pass
             finally:
                 pad.release()  # never leave a button held when the hub goes away
+                clients.left(time.monotonic())
 
     return Handler
 
@@ -219,15 +248,23 @@ def serve(args):
 
     nx = nxbt.Nxbt(disable_logging=True)  # restarts BlueZ with all plugins off (toggle_clean_bluez(True))
     pad = Pad(nx, nxbt, args.address_file)
+    clients = Clients(time.monotonic())
+    handler = make_handler(pad, clients)
 
-    if os.path.exists(args.socket):
-        os.unlink(args.socket)
-    os.makedirs(os.path.dirname(args.socket), exist_ok=True)
-    old = os.umask(0o117)  # the socket is born 0660, never briefly world-writable
-    server = socketserver.ThreadingUnixStreamServer(args.socket, make_handler(pad))
-    os.umask(old)
-    os.chown(args.socket, -1, grp.getgrnam(args.group).gr_gid)
-    os.chmod(args.socket, 0o660)
+    fd = listen_fd()
+    if fd is not None:  # systemd made the socket (owner, group, mode) and keeps it after we exit
+        server = socketserver.ThreadingUnixStreamServer(args.socket, handler, bind_and_activate=False)
+        server.socket.close()
+        server.socket = socket.socket(fileno=fd)
+    else:
+        if os.path.exists(args.socket):
+            os.unlink(args.socket)
+        os.makedirs(os.path.dirname(args.socket), exist_ok=True)
+        old = os.umask(0o117)  # the socket is born 0660, never briefly world-writable
+        server = socketserver.ThreadingUnixStreamServer(args.socket, handler)
+        os.umask(old)
+        os.chown(args.socket, -1, grp.getgrnam(args.group).gr_gid)
+        os.chmod(args.socket, 0o660)
     server.daemon_threads = True
 
     def stop(*_):
@@ -241,6 +278,10 @@ def serve(args):
             try:
                 pad.remember_switch()
                 pad.recover(time.monotonic())
+                if fd is not None and clients.idle(time.monotonic(), IDLE_S):
+                    log("info", "no hub for a while: stopping", idle_s=IDLE_S)
+                    stop()
+                    return
             except Exception as e:  # the watcher must outlive any one nxbt hiccup
                 log("error", "watch failed", reason=repr(e))
             time.sleep(2)
@@ -255,12 +296,19 @@ def serve(args):
         except Exception:
             pass  # nxbt's processes may already be gone (systemd signals the whole group)
         server.server_close()
-        if os.path.exists(args.socket):
+        if fd is None and os.path.exists(args.socket):
             os.unlink(args.socket)
         restore_bluez()
         log("info", "nxbt sidecar stopped")
         # nxbt's multiprocessing children can block a normal exit; nothing is left to flush.
         os._exit(0)
+
+
+def listen_fd():
+    """The socket systemd hands over when dr4w-home-nxbt.socket starts us (sd_listen_fds), or None."""
+    if os.environ.get("LISTEN_PID") == str(os.getpid()) and os.environ.get("LISTEN_FDS") == "1":
+        return 3
+    return None
 
 
 def restore_bluez():
@@ -352,6 +400,12 @@ def self_test():
     assert pad.index == 3
     pad.index = None  # a create that failed: input is dropped, not an error
     assert handle(pad, json.dumps(ok).encode()) is None and handle(pad, b'{"op":"release"}') is None
+    clients = Clients(0.0)
+    assert not clients.idle(IDLE_S - 1, IDLE_S) and clients.idle(IDLE_S, IDLE_S)
+    clients.joined()
+    assert not clients.idle(10_000.0, IDLE_S)  # never idle while the hub is connected
+    clients.left(10_000.0)
+    assert not clients.idle(10_000.0 + IDLE_S - 1, IDLE_S) and clients.idle(10_000.0 + IDLE_S, IDLE_S)
     print("self-test ok")
 
 

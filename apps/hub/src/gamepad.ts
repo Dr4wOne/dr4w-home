@@ -52,6 +52,7 @@ export class GamepadSession {
     this.#out = output
     this.#ws = ws
     this.#done = done
+    output.sessionStarted?.()
     this.#connected = output.connected()
     this.#waiting = this.#why(this.#connected)
     this.#state()
@@ -135,6 +136,7 @@ export class GamepadSession {
     clearTimeout(this.#watchdog)
     clearInterval(this.#poll)
     this.#release()
+    this.#out.sessionEnded?.()
     this.#done()
     this.#done = undefined
   }

@@ -59,6 +59,19 @@ describe('live controller session', () => {
     session?.close()
   })
 
+  it('tells an on-demand output when a phone starts and stops playing', async () => {
+    const calls: string[] = []
+    const out = Object.assign(new DemoOutput(), {
+      sessionStarted: () => calls.push('started'),
+      sessionEnded: () => calls.push('ended'),
+    })
+    const session = new GamepadSessions().open('switch2', out, fakeSocket())
+    expect(calls).toEqual(['started'])
+    session?.close()
+    session?.close()
+    expect(calls).toEqual(['started', 'ended'])
+  })
+
   it('ignores frames that are not newer than the last one', async () => {
     const { out, session } = await start()
     session.message(frame(5, mask(['b'])))

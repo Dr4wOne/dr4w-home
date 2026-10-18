@@ -142,7 +142,7 @@ export class NintendoSwitchAdapter implements DeviceAdapter {
     this.#hub = opts.hub
     for (const cfg of devices) {
       const output = (opts.makeOutput ?? ((o) => makeOutput(o, opts.log)))(cfg.output)
-      void output.connect()
+      if (!output.sessionStarted) void output.connect() // on-demand outputs connect per session
       this.#consoles.set(cfg.id, {
         cfg,
         output,
