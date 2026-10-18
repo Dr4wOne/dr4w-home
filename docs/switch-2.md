@@ -18,6 +18,19 @@ Tested on one setup: a Switch 2 on system 23.0.1, docked to an Android TV, and a
   Bluetooth device (headphones, keyboards, mice). The controller service starts when you tap Play and
   stops by itself; you never need a command to play.
 
+## Pause and resume
+Not playing for a while? Switch the controller service off completely. The hub computer's Bluetooth
+stays normal, and **Play** on the phone says "The controller service is not running on the hub":
+```sh
+sudo systemctl disable --now dr4w-home-nxbt.socket dr4w-home-nxbt
+```
+To play again, switch it back on (it then starts by itself when you tap **Play**, as before):
+```sh
+sudo systemctl enable --now dr4w-home-nxbt.socket
+```
+Nothing else changes: the hub, its config and the pairing stay as they are. On the first **Play**
+after resuming, pair once on the console (Change Grip/Order).
+
 ## Before you start
 You need:
 1. The hub running, with the Switch 2 in its config (`output` set to `bluetooth`):
