@@ -18,10 +18,10 @@ works from the phone over Bluetooth; G5 results below wait for the owner's revie
 | Latency through the real sidecar | Pass: hub receive to sidecar write p95 0.13 ms (p99 0.21); client send to ack p95 0.75 ms; 1000 of 1000 frames | `pnpm --filter @dr4w-home/hub latency --sidecar …`. Not in it: phone Wi-Fi, the Bluetooth link |
 | Release on a dropped connection | Pass | Owner turned the phone's Wi-Fi off while holding a button |
 | Reconnect after the console sleeps | Fail: the console refuses (`Connection reset by peer`) | Pair again; the phone says so ("Not paired: …") |
-| Start on Play, stop when idle | Start: pass (service started by the hub's connection). Idle stop: not observed yet | Socket activation logs |
+| Start on Play, stop when idle | Pass: started by the hub's connection; stopped 10 min after the hub let go (30 s after the phone), in 0.6 s, and BlueZ came back with its plugins, adapter on, no chip errors | Sidecar, hub and kernel logs |
 | Real iPhone: multi-touch, tilt, click sound, Home Screen full screen | Open | Owner |
 
-Open before G6: the idle stop and the iPhone checks; a branch review.
+Open before G6: the iPhone checks; a branch review.
 
 ## Done
 - Packages: `device-sdk` (capabilities incl. `mode`, schemas), `adapter-android-tv` (protocol, supervised
