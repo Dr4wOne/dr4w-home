@@ -19,9 +19,9 @@ works from the phone over Bluetooth; G5 results below wait for the owner's revie
 | Release on a dropped connection | Pass | Owner turned the phone's Wi-Fi off while holding a button |
 | Reconnect after the console sleeps | Fail: the console refuses (`Connection reset by peer`) | Pair again; the phone says so ("Not paired: …") |
 | Start on Play, stop when idle | Pass: started by the hub's connection; stopped 10 min after the hub let go (30 s after the phone), in 0.6 s, and BlueZ came back with its plugins, adapter on, no chip errors | Sidecar, hub and kernel logs |
-| Real iPhone: multi-touch, tilt, click sound, Home Screen full screen | Open | Owner |
+| Real iPhone: multi-touch, tilt sign and motion permission, click sound, Home Screen full screen | Pass | Owner, on the console |
 
-Open before G6: the iPhone checks; a branch review.
+Open before G6: a branch review.
 
 ## Done
 - Packages: `device-sdk` (capabilities incl. `mode`, schemas), `adapter-android-tv` (protocol, supervised
@@ -55,7 +55,7 @@ Open before G6: the iPhone checks; a branch review.
   70 ms on the TV's home screen. Phone-to-hub time over the VPN is not measured yet.
 - Showcase best practices is 93: Cloudflare Web Analytics injects a beacon that the CSP blocks, which logs a
   console error. Fix: exclude home.dr4w.io from automatic setup in the Cloudflare dashboard.
-- Only tested in Chromium at iPhone sizes; real Safari, VoiceOver by ear and 60 fps are open.
+- The phone controller passed on a real iPhone (Safari, Home Screen app); VoiceOver by ear and 60 fps are open.
 
 ## Recent decisions
 See [decisions/README.md](decisions/README.md).
