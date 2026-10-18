@@ -40,9 +40,10 @@ You need:
    the controller right away needs no new pairing), and the service stops 10 minutes after that,
    giving the computer's Bluetooth back.
 
-Want it back sooner? `sudo systemctl stop dr4w-home-nxbt` stops it at once; the next **Play** starts
-it again. Want it to stay on? `sudo systemctl start dr4w-home-nxbt` by hand keeps it running until you
-stop it.
+Want Bluetooth back sooner? Close the controller on the phone, wait 30 seconds, then
+`sudo systemctl stop dr4w-home-nxbt`. (While a phone plays, or in those 30 seconds, the hub is still
+connected and a stop starts the service again at once.) The next **Play** starts it again. Want it to
+stay on? `sudo systemctl start dr4w-home-nxbt` by hand keeps it running until you stop it.
 
 Layouts, tilt steering, the builder and the keyboard: [controller.md](controller.md).
 
@@ -61,7 +62,8 @@ you play again after it stopped itself, pair once more.
 |---|---|---|
 | Pair again after every sleep or restart, and when you play after the service stopped itself | The Switch 2 refuses the emulated controller's reconnect (`Connection reset by peer` in the log) | Change Grip/Order, a few seconds; the phone tells you when. The planned USB bridge will not have this limit |
 | The phone cannot wake the console | A real controller wakes it by reconnecting, which the Switch 2 refuses here | Turn the TV on (in the app, or with the TV remote): Match TV Power State wakes the console with it |
-| No other Bluetooth on the hub computer while you play and for 10 minutes after | The emulation restarts the computer's Bluetooth with everything else switched off; a second Bluetooth adapter does not help | Wait, or `sudo systemctl stop dr4w-home-nxbt` to get it back at once |
+| No other Bluetooth on the hub computer while you play and for 10 minutes after | The emulation restarts the computer's Bluetooth with everything else switched off; a second Bluetooth adapter does not help | Wait, or close the controller, wait 30 s and `sudo systemctl stop dr4w-home-nxbt` |
+| The first **Play** after a stop takes up to about 15 seconds | Each start and stop restarts the computer's Bluetooth service; the service waits 10 s between two restarts, because restarting it twice in a row can hang some Bluetooth chips | Wait for the pairing hint; it comes once the service is ready |
 | One player | The hub emulates one controller | A second phone waits ("Another phone is using this controller") and connects when the first one stops |
 | A Switch 1 Pro Controller, not a Switch 2 one | That is what the emulation (nxbt) offers | No C button (GameChat), no motion controls sent to the console, no rumble, no amiibo (NFC). Tilt steering moves the left stick, so it works where a stick steers |
 | Delay you may feel | Measured on the hub: under 1 ms. Not measured: the phone's Wi-Fi and the Bluetooth link | Fine for menus, party and casual games; not for competitive play. A good Wi-Fi signal near the phone helps most |
@@ -81,6 +83,7 @@ Look at the service first: `journalctl -u dr4w-home-nxbt -f` (one line per event
 | The phone says **The controller service is not running on the hub** | The socket is not installed or not enabled, the service failed to start, or the hub's user is not in the `dr4w-home` group | `systemctl status dr4w-home-nxbt.socket dr4w-home-nxbt` and `journalctl -u dr4w-home-nxbt`; `id` should list `dr4w-home` for the hub's user (log out and in after adding it) |
 | The phone says **Connected · Bluetooth**, the console does nothing | The console is on a screen that ignores this controller, or another controller is player 1 | Press Home on the phone; on Change Grip/Order, check the order of the controllers |
 | The log shows `nxbt controller crashed` | Normal after the console sleeps; the service starts a fresh controller by itself 10 s later | Change Grip/Order on the console |
+| The log shows `Bluetooth adapter is not responding`, or pairing never works and `bluetoothctl show` says `Powered: no` | The computer's Bluetooth chip hung (the kernel log shows `hci0: Opcode … failed: -110`) | `sudo systemctl stop dr4w-home-nxbt && sudo modprobe -r btusb && sleep 2 && sudo modprobe btusb`, then **Play** again. If `Powered` stays `no`, reboot |
 | Headphones on the hub computer went silent | The service is running (it stops 10 minutes after the last phone) | Wait, or stop it now: `sudo systemctl stop dr4w-home-nxbt` |
 | A button stayed pressed on the console | Should never happen: the hub releases everything after 0.1 s without news from the phone | Please open an issue with the time and the log lines from both services |
 

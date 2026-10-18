@@ -43,6 +43,8 @@ NXBT_KEYS = {
 AXES = ("lx", "ly", "rx", "ry")
 MAX_LINE = 512
 RETRY_S = 10  # after a crash, wait this long before starting a new controller (BlueZ needs the pause)
+MAX_RETRY_S = 60  # crashes in a row double the wait, up to this
+SETTLE_S = 10  # BlueZ restarted less than this ago: wait before nxbt restarts it again (it can hang the chip)
 IDLE_S = 600  # started by dr4w-home-nxbt.socket: exit after this long with no hub connected
 LISTEN_S = 170  # nxbt is discoverable for 180 s; renew before that runs out, and retry the known Switch
 BLUEZ_OVERRIDE = "/run/systemd/system/bluetooth.service.d/nxbt.conf"  # written by nxbt on start
@@ -108,8 +110,10 @@ class Clients:
 class Pad:
     """The one emulated controller. Every input goes through here, under a lock."""
 
-    def __init__(self, nx, nxbt, address_file):
+    def __init__(self, nx, nxbt, address_file, adapter_ok=lambda: True):
         self.nx = nx
+        self.adapter_ok = adapter_ok
+        self.failures = 0
         self.lock = threading.Lock()
         self.address_file = address_file
         self.saved = read_addresses(address_file)
@@ -127,17 +131,26 @@ class Pad:
 
         When the Switch sleeps or refuses a reconnect, nxbt marks the controller crashed and stops; when
         it waits to be paired, it stops being discoverable after 180 s. Start a fresh controller after a
-        crash (not sooner than RETRY_S after the last one) or when the pairing window is about to close.
+        crash (RETRY_S after the last start, doubling for crashes in a row up to MAX_RETRY_S) or when the
+        pairing window is about to close. Never while the Bluetooth adapter is off or not answering.
         """
         state = self.state()
         if state == "connected":
+            self.failures = 0
             return
-        age = now - self.created_at
-        if age < RETRY_S or (state not in ("crashed", "unknown") and age < LISTEN_S):
+        broken = state in ("crashed", "unknown")
+        wait = min(RETRY_S * 2**self.failures, MAX_RETRY_S) if broken else LISTEN_S
+        if now - self.created_at < wait:
             return
         if state == "crashed":
             errors = str(self.nx.state[self.index].get("errors") or "").strip().splitlines()
             log("error", "nxbt controller crashed", reason=errors[-1] if errors else "unknown")
+        if broken:
+            self.failures += 1
+        if not self.adapter_ok():
+            self.created_at = now  # try again after the next wait
+            log("error", "Bluetooth adapter is not responding: reset it (sudo modprobe -r btusb && sudo modprobe btusb) or reboot")
+            return
         with self.lock:
             if self.index is not None:
                 try:
@@ -246,8 +259,14 @@ def make_handler(pad, clients):
 def serve(args):
     import nxbt  # only here: the self-test runs without nxbt or root
 
+    settle_bluez()
     nx = nxbt.Nxbt(disable_logging=True)  # restarts BlueZ with all plugins off (toggle_clean_bluez(True))
-    pad = Pad(nx, nxbt, args.address_file)
+    adapter_ok = make_adapter_check()
+    for _ in range(15):  # the adapter takes a moment after BlueZ restarts
+        if adapter_ok():
+            break
+        time.sleep(1)
+    pad = Pad(nx, nxbt, args.address_file, adapter_ok)
     clients = Clients(time.monotonic())
     handler = make_handler(pad, clients)
 
@@ -302,6 +321,37 @@ def serve(args):
         log("info", "nxbt sidecar stopped")
         # nxbt's multiprocessing children can block a normal exit; nothing is left to flush.
         os._exit(0)
+
+
+def settle_bluez():
+    """Some chips (an Intel AX201 here) hang when BlueZ restarts twice within seconds, e.g. our stop
+    restoring it and the next start cleaning it again. Wait until it has run SETTLE_S."""
+    try:
+        out = subprocess.run(
+            ["systemctl", "show", "-p", "ActiveEnterTimestampMonotonic", "--value", "bluetooth"],
+            capture_output=True, text=True, check=False,
+        ).stdout.strip()
+        since = time.monotonic() - int(out) / 1e6  # systemd's monotonic clock is CLOCK_MONOTONIC too
+    except ValueError:
+        return
+    if 0 <= since < SETTLE_S:
+        time.sleep(SETTLE_S - since)
+
+
+def make_adapter_check():
+    """True when the Bluetooth adapter is on (switched on if it was off) and answers on D-Bus."""
+    from nxbt.bluez import BlueZ
+
+    def adapter_ok():
+        try:
+            bt = BlueZ()
+            if not bt.powered:
+                bt.set_powered(True)
+            return bt.powered
+        except Exception:
+            return False
+
+    return adapter_ok
 
 
 def listen_fd():
@@ -383,6 +433,7 @@ def self_test():
             return index
 
     pad.nx, pad.kind, pad.created_at, pad.saved = FakeLifecycle(), "pro", 95.0, ["switch"]
+    pad.failures, pad.adapter_ok = 0, lambda: True
     pad.recover(100.0)  # crashed, but too soon after the last start
     assert pad.nx.created == []
     pad.recover(105.0)  # crashed: a fresh controller that tries the saved Switch first
@@ -398,6 +449,27 @@ def self_test():
     pad.nx.state.pop(2)  # gone without a trace: "unknown" is recovered too
     pad.recover(1000.0)
     assert pad.index == 3
+    pad.nx.state[3]["state"] = "connected"
+    pad.recover(2000.0)
+    assert pad.failures == 0
+    pad.nx.state[3]["state"] = "crashed"  # crashes in a row wait 10, 20, 40, 60, 60 s
+    t = pad.created_at = 2000.0
+    for wait in (10, 20, 40, 60, 60):
+        before = len(pad.nx.created)
+        pad.recover(t + wait - 1)
+        assert len(pad.nx.created) == before, wait
+        t += wait
+        pad.recover(t)
+        assert len(pad.nx.created) == before + 1, wait
+        pad.nx.state[pad.index]["state"] = "crashed"
+    pad.adapter_ok, before = (lambda: False), len(pad.nx.created)  # adapter off: no new controller
+    pad.recover(t + 60)
+    assert len(pad.nx.created) == before
+    pad.adapter_ok = lambda: True
+    pad.recover(t + 119)
+    assert len(pad.nx.created) == before  # still waiting from the failed attempt
+    pad.recover(t + 120)
+    assert len(pad.nx.created) == before + 1
     pad.index = None  # a create that failed: input is dropped, not an error
     assert handle(pad, json.dumps(ok).encode()) is None and handle(pad, b'{"op":"release"}') is None
     clients = Clients(0.0)

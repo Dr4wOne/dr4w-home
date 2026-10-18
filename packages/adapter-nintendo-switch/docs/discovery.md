@@ -81,3 +81,9 @@ in later as a second output behind the same interface.
   Connection reset by peer` on three tries, also right after a service restart with the console
   awake. Pairing again through Change Grip/Order works. Not investigated further (owner, 2026-10-17);
   the wired bridge avoids Bluetooth reconnects altogether.
+- **The laptop's Bluetooth chip can hang when BlueZ restarts twice within seconds** (2026-10-17). With
+  socket activation, the sidecar's stop restored BlueZ and the next start cleaned it again about 20 s
+  later; the kernel logged `hci0: Opcode 0x0c1a failed: -112`, then `Opcode 0x0c03 failed: -110` and
+  USB resets, and the adapter stayed `Powered: no` (nxbt: `org.bluez.Error.Busy`). Reloading `btusb`
+  brought it back. The sidecar now waits until BlueZ has run 10 s before restarting it, checks the
+  adapter before each new controller, and backs off 10 to 60 s between crashes.
